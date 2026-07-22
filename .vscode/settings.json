@@ -1,0 +1,7 @@
+{
+  "livePreview.defaultPreviewPath": "/index.html",
+  "livePreview.openPreviewTarget": "Embedded Preview",
+  "livePreview.autoRefreshPreview": "On Changes to Saved Files",
+  "livePreview.serverKeepAliveAfterEmbeddedPreviewClose": 10,
+  "livePreview.portNumber": 3000
+}
