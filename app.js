@@ -4,7 +4,7 @@ const state = {
   rawRecords: [],
   movements: [],
   filtered: [],
-  page: "overview",
+  page: "guide",
   reportDate: "2026-07-23",
   timeline: "week",
   movementMetric: "volume",
@@ -14,6 +14,12 @@ const state = {
 };
 
 const pageConfig = {
+  guide: {
+    label: "Hướng dẫn sử dụng",
+    title: "Cách sử dụng báo cáo trong cuộc họp kho",
+    description: "Đi từ bức tranh tổng quan đến barcode cần xử lý, giao người phụ trách và kiểm soát deadline.",
+    kicker: "Bắt đầu tại đây",
+  },
   overview: {
     label: "Tổng quan",
     title: "Tồn kho mousse dưới góc nhìn điều hành",
@@ -50,17 +56,17 @@ const pageConfig = {
     description: "Biến dữ liệu kho thành danh sách việc cần làm để chuẩn bị cho cuộc họp quản trị kho.",
     kicker: "Khuyến nghị xử lý",
   },
-  workflow: {
-    label: "Luồng công việc",
-    title: "Kiểm soát nhiệm vụ xử lý tồn kho",
-    description: "Theo dõi người phụ trách, deadline và tiến độ xử lý đến từng barcode mousse.",
-    kicker: "Điều hành công việc",
-  },
   details: {
     label: "Chi tiết block",
     title: "Tra cứu block mousse đang tồn",
     description: "Xem theo block, vị trí, sản phẩm, màu sắc, trạng thái và lịch nhập xuất hiện tại.",
     kicker: "Chi tiết dữ liệu",
+  },
+  workflow: {
+    label: "Luồng công việc",
+    title: "Kiểm soát nhiệm vụ xử lý tồn kho",
+    description: "Theo dõi người phụ trách, deadline và tiến độ xử lý đến từng barcode mousse.",
+    kicker: "Điều hành công việc",
   },
 };
 
@@ -81,6 +87,7 @@ const ageColors = {
 };
 
 const icons = {
+  guide: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M8 20a3 3 0 010-6h11M9 8h6"/></svg>',
   overview: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
   warehouse: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 9l9-5 9 5v11H3zM3 9h18M8 20v-6h8v6"/></svg>',
   product: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg>',
@@ -110,6 +117,7 @@ const els = {
   colorFilter: document.getElementById("color-filter"),
   ageFilter: document.getElementById("age-filter"),
   statusFilter: document.getElementById("status-filter"),
+  filterBar: document.getElementById("filter-bar"),
   clearFilters: document.getElementById("clear-filters"),
   exportButton: document.getElementById("export-button"),
   menuButton: document.getElementById("menu-button"),
@@ -585,6 +593,60 @@ function detailsTable(rows = state.filtered) {
   </tbody></table></div>`;
 }
 
+function guidePage() {
+  const steps = [
+    { number: "01", title: "Chọn phạm vi cần họp", text: "Vào Tổng quan rồi lọc theo kho, sản phẩm, màu sắc, tuổi tồn hoặc ClassCode.", page: "overview", action: "Mở Tổng quan" },
+    { number: "02", title: "Nhìn biến động nhập – xuất", text: "Đọc cột m³, đường số block và luồng ròng theo ngày, tuần hoặc tháng.", page: "overview", action: "Xem nhịp kho" },
+    { number: "03", title: "Drill xuống nguyên nhân", text: "Nhấn biểu đồ, ô tuổi × trạng thái hoặc dòng sản phẩm để mở màn hình inside.", page: "aging", action: "Mở Tuổi tồn" },
+    { number: "04", title: "Chốt đến từng barcode", text: "Trong bảng inside hoặc Chi tiết block, xác định đúng block cần xử lý.", page: "details", action: "Mở Chi tiết block" },
+    { number: "05", title: "Giao người và deadline", text: "Nhấn Giao việc, nhập người phụ trách, ngày giao, deadline, ưu tiên và yêu cầu đầu ra.", page: "details", action: "Bắt đầu giao việc" },
+    { number: "06", title: "Kiểm soát đến khi hoàn thành", text: "Theo dõi việc mở, quá hạn, sắp đến hạn và cập nhật trạng thái trong Luồng công việc.", page: "workflow", action: "Mở Luồng công việc" },
+  ];
+  return `
+    <section class="guide-hero">
+      <div>
+        <span class="guide-label">Quy trình họp kho</span>
+        <h2>Từ một tín hiệu tồn kho<br>đến một hành động có người phụ trách</h2>
+        <p>Báo cáo được thiết kế để cuộc họp không dừng ở việc “nhìn số”. Mỗi vấn đề cần được drill đến barcode, giao người xử lý và theo dõi đến deadline.</p>
+        <button type="button" data-go-page="overview">Bắt đầu xem Tổng quan <span>→</span></button>
+      </div>
+      <div class="guide-principle">
+        <span>Nguyên tắc sử dụng</span>
+        <strong>1 vấn đề</strong><i>→</i><strong>1 barcode</strong><i>→</i><strong>1 người phụ trách</strong><i>→</i><strong>1 deadline</strong>
+      </div>
+    </section>
+    <section class="guide-steps">
+      ${steps.map(step => `<article>
+        <span class="guide-step-number">${step.number}</span>
+        <div><h3>${step.title}</h3><p>${step.text}</p></div>
+        <button type="button" data-go-page="${step.page}">${step.action} <span>→</span></button>
+      </article>`).join("")}
+    </section>
+    <div class="guide-reference-grid">
+      <section class="guide-reference">
+        <span class="guide-reference-kicker">Cách đọc dữ liệu</span>
+        <h3>Các định nghĩa chính</h3>
+        <dl>
+          <div><dt>Sản phẩm</dt><dd>Lấy từ ItemName; màu được tách thành trường riêng.</dd></div>
+          <div><dt>Tuổi tồn</dt><dd>Ngày báo cáo trừ ReceiptDate của block đang tồn.</dd></div>
+          <div><dt>Trạng thái</dt><dd>ClassCode là trạng thái chính; Remark và Remark 1 là lớp giải thích phụ.</dd></div>
+          <div><dt>Nhập / xuất</dt><dd>Receipt và Delivery, theo cả số block và m³.</dd></div>
+        </dl>
+      </section>
+      <section class="guide-reference">
+        <span class="guide-reference-kicker">Trong cuộc họp</span>
+        <h3>Ba câu hỏi cần chốt</h3>
+        <ol>
+          <li>Block này tồn vì đơn hàng, sản xuất dư hay nguyên nhân khác?</li>
+          <li>Phương án xử lý cụ thể là sử dụng, chuyển đổi, điều chuyển hay loại bỏ?</li>
+          <li>Ai là người phụ trách và deadline dự kiến là ngày nào?</li>
+        </ol>
+        <p class="guide-storage-note">Nhiệm vụ hiện được lưu trên trình duyệt của máy đang sử dụng. Cần backend để đồng bộ nhiều người dùng.</p>
+      </section>
+    </div>
+  `;
+}
+
 function overviewPage(rows = state.filtered) {
   const oldest = [...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0))[0];
   return `
@@ -792,15 +854,17 @@ function renderPage() {
   els.pageKicker.textContent = config.kicker;
   els.topTitle.textContent = config.label;
   els.scopeText.textContent = filtersScopeLabel();
+  els.filterBar.hidden = state.page === "guide";
   const pages = {
+    guide: guidePage,
     overview: overviewPage,
     warehouse: warehousePage,
     product: productPage,
     aging: agingPage,
     status: statusPage,
     actions: actionsPage,
-    workflow: workflowPage,
     details: detailsPage,
+    workflow: workflowPage,
   };
   els.pageContent.innerHTML = pages[state.page](state.filtered);
   els.pageContent.classList.add("page-enter");
@@ -998,8 +1062,15 @@ function bindEvents() {
   els.exportButton.addEventListener("click", exportCurrentCsv);
 
   els.pageContent.addEventListener("click", event => {
-    const pageButton = event.target.closest("[data-assign-barcode],[data-timeline],[data-metric],[data-product],[data-drill-type],[data-drill-age]");
+    const pageButton = event.target.closest("[data-go-page],[data-assign-barcode],[data-timeline],[data-metric],[data-product],[data-drill-type],[data-drill-age]");
     if (!pageButton) return;
+    if (pageButton.dataset.goPage) {
+      state.page = pageButton.dataset.goPage;
+      buildNav();
+      renderPage();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     if (pageButton.dataset.assignBarcode) {
       openTaskModal(pageButton.dataset.assignBarcode);
       return;
