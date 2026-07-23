@@ -149,6 +149,7 @@ const TASK_STORAGE_KEY = "havas-inventory-tasks-v1";
 const formatNumber = (value, digits = 0) =>
   new Intl.NumberFormat("vi-VN", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
 const formatDate = value => (value ? new Intl.DateTimeFormat("vi-VN").format(new Date(value)) : "—");
+const escapeAttr = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const unique = values => [...new Set(values)].sort((a, b) => String(a).localeCompare(String(b), "vi", { sensitivity: "base" }));
 const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] || 0), 0);
 
@@ -722,8 +723,8 @@ function statusPage(rows = state.filtered) {
       </article>`).join("")}
     </div>
     <div class="dashboard-grid section-gap">
-      ${panel("Remark đang đi cùng tồn kho", "Trạng thái phụ giúp hiểu rõ tồn để làm gì hoặc phát sinh từ đâu", remarkTable(rows, "statusSecondary", "Remark"))}
-      ${panel("Remark 1 đi kèm", "Lớp ghi chú phụ sâu hơn cho điều tra nội bộ", remarkTable(rows, "statusTertiary", "Remark 1"))}
+      ${panel("Remark đang đi cùng tồn kho", "Nhấn một dòng để xem toàn bộ barcode và giao việc xử lý", remarkTable(rows, "statusSecondary", "Remark"))}
+      ${panel("Remark 1 đi kèm", "Nhấn một dòng để drill xuống các block liên quan", remarkTable(rows, "statusTertiary", "Remark 1"))}
     </div>`;
 }
 
@@ -735,8 +736,9 @@ function remarkTable(rows, key, label) {
     age: weightedAge(entries),
   })).sort((a, b) => b.volume - a.volume).slice(0, 12);
   if (!items.length) return '<div class="empty-state"><strong>Chưa có dữ liệu</strong><span>Nhóm hiện tại không phát sinh trường này.</span></div>';
-  return `<div class="table-wrap"><table><thead><tr><th>${label}</th><th>Block</th><th>m3 tồn</th><th>Tuổi TB</th></tr></thead><tbody>
-    ${items.map(item => `<tr><td>${item.name}</td><td class="numeric" data-sort-value="${item.units}">${formatNumber(item.units, 0)}</td><td class="numeric" data-sort-value="${item.volume}">${formatNumber(item.volume, 1)} m³</td><td class="numeric" data-sort-value="${item.age}">${formatNumber(item.age, 0)} ngày</td></tr>`).join("")}
+  const drillType = key === "statusSecondary" ? "remark" : "remark1";
+  return `<div class="table-wrap"><table><thead><tr><th>${label}</th><th>Block</th><th>m3 tồn</th><th>Tuổi TB</th><th></th></tr></thead><tbody>
+    ${items.map(item => `<tr class="interactive-row" tabindex="0" data-drill-type="${drillType}" data-drill-value="${escapeAttr(item.name)}"><td>${item.name}</td><td class="numeric" data-sort-value="${item.units}">${formatNumber(item.units, 0)}</td><td class="numeric" data-sort-value="${item.volume}">${formatNumber(item.volume, 1)} m³</td><td class="numeric" data-sort-value="${item.age}">${formatNumber(item.age, 0)} ngày</td><td class="row-arrow">→</td></tr>`).join("")}
   </tbody></table></div>`;
 }
 
@@ -925,6 +927,8 @@ function subsetByDrill(type, value) {
   if (type === "color") return state.filtered.filter(row => row.color === value);
   if (type === "age") return state.filtered.filter(row => row.ageBucket === value);
   if (type === "warehouse") return state.filtered.filter(row => row.warehouse === value);
+  if (type === "remark") return state.filtered.filter(row => row.statusSecondary === value);
+  if (type === "remark1") return state.filtered.filter(row => row.statusTertiary === value);
   if (type === "day" || type === "week" || type === "month") {
     const receiptKey = type === "day" ? "receiptDate" : type === "week" ? "receiptWeek" : "receiptMonth";
     const deliveryKey = type === "day" ? "deliveryDate" : type === "week" ? "deliveryWeek" : "deliveryMonth";
@@ -949,7 +953,7 @@ function openAnalysis(rows, title, subtitle) {
     </div>
     <div class="dashboard-grid equal">
       ${panel("Kho đang giữ nhóm này", "Để biết tồn đang nằm ở đâu", barChart(unique(rows.map(row => row.warehouse)).map(warehouse => ({ label: warehouse, value: sum(rows.filter(row => row.warehouse === warehouse), "closeVolume"), drillType: "warehouse", drillValue: warehouse })), value => `${formatNumber(value, 1)} m³`, "#34373c"))}
-      ${panel("Trạng thái phụ nổi bật", "Tổng hợp từ Remark và Remark 1", topRemarks.length ? barChart(topRemarks.map(item => ({ label: item.name, value: item.volume })), value => `${formatNumber(value, 1)} m³`, "#b22536") : '<div class="empty-state"><strong>Không có dữ liệu</strong><span>Nhóm này chưa có trạng thái phụ.</span></div>')}
+      ${panel("Trạng thái phụ nổi bật", "Nhấn để xem barcode và giao việc", topRemarks.length ? barChart(topRemarks.map(item => ({ label: item.name, value: item.volume, drillType: "remark", drillValue: escapeAttr(item.name) })), value => `${formatNumber(value, 1)} m³`, "#b22536") : '<div class="empty-state"><strong>Không có dữ liệu</strong><span>Nhóm này chưa có trạng thái phụ.</span></div>')}
     </div>
     ${panel("Danh sách block liên quan", "Phạm vi theo drill hiện tại", detailsTable(rows.slice(0, 40)), `${formatNumber(rows.length, 0)} block`, "table-panel")}
   `;
