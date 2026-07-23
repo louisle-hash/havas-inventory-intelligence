@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Havas Inventory Intelligence — Báo cáo tồn kho điều hành" />
+    <link rel="icon" href="data:," />
     <title>Havas Inventory Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -56,6 +57,7 @@
           <section class="filter-bar" aria-label="Bộ lọc báo cáo">
             <label><span>Kho</span><select id="warehouse-filter"></select></label>
             <label><span>Sản phẩm</span><select id="product-filter"></select></label>
+            <label><span>Màu sắc</span><select id="color-filter"></select></label>
             <label><span>Tuổi tồn</span><select id="age-filter"></select></label>
             <label><span>Trạng thái</span><select id="status-filter"></select></label>
             <button class="clear-button" id="clear-filters">Xóa bộ lọc</button>
@@ -75,6 +77,27 @@
           </button>
         </header>
         <div class="analysis-body" id="product-modal-body"></div>
+      </section>
+    </div>
+    <div class="task-overlay" id="task-modal" hidden>
+      <section class="task-dialog" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+        <header class="task-dialog-header">
+          <div><span class="analysis-kicker">Giao việc theo barcode</span><h2 id="task-modal-title">Tạo nhiệm vụ xử lý block</h2><p id="task-barcode-context"></p></div>
+          <button class="analysis-close" id="task-modal-close" type="button" aria-label="Đóng giao việc">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </header>
+        <form class="task-form" id="task-form">
+          <input type="hidden" id="task-barcode" />
+          <label class="task-field task-field-wide"><span>Nội dung công việc</span><input id="task-title" required placeholder="Ví dụ: Xác minh đơn hàng và chốt phương án sử dụng block" /></label>
+          <label class="task-field"><span>Người phụ trách</span><input id="task-assignee" required placeholder="Họ tên hoặc bộ phận" /></label>
+          <label class="task-field"><span>Ngày giao</span><input id="task-start-date" type="date" required /></label>
+          <label class="task-field"><span>Deadline</span><input id="task-deadline" type="date" required /></label>
+          <label class="task-field"><span>Mức ưu tiên</span><select id="task-priority"><option>Khẩn cấp</option><option selected>Cao</option><option>Trung bình</option><option>Thấp</option></select></label>
+          <label class="task-field"><span>Trạng thái</span><select id="task-status"><option>Chưa bắt đầu</option><option>Đang xử lý</option><option>Chờ xác nhận</option><option>Hoàn thành</option></select></label>
+          <label class="task-field task-field-wide"><span>Yêu cầu / ghi chú xử lý</span><textarea id="task-note" rows="4" placeholder="Kết quả cần đạt, phương án dự kiến hoặc điểm cần xác minh"></textarea></label>
+          <div class="task-form-actions"><button class="secondary-button" id="task-cancel" type="button">Hủy</button><button class="task-submit" type="submit">Giao nhiệm vụ</button></div>
+        </form>
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
