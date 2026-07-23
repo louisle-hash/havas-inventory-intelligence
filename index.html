@@ -49,7 +49,7 @@
             <div>
               <p class="eyebrow" id="page-kicker">Tổng quan điều hành</p>
               <h1 id="page-title">Tồn kho dưới góc nhìn quyết định</h1>
-              <p id="page-description">Nắm quy mô vốn, tuổi tồn và các nhóm hàng cần ưu tiên xử lý.</p>
+              <p id="page-description">Nắm quy mô tồn, tuổi tồn và các nhóm hàng nên cùng xem xét.</p>
             </div>
             <div class="scope-badge"><span class="status-dot"></span><span id="scope-text">Toàn bộ kho</span></div>
           </section>
@@ -82,21 +82,21 @@
     <div class="task-overlay" id="task-modal" hidden>
       <section class="task-dialog" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
         <header class="task-dialog-header">
-          <div><span class="analysis-kicker">Giao việc theo barcode</span><h2 id="task-modal-title">Tạo nhiệm vụ xử lý block</h2><p id="task-barcode-context"></p></div>
-          <button class="analysis-close" id="task-modal-close" type="button" aria-label="Đóng giao việc">
+          <div><span class="analysis-kicker">Phân công theo barcode</span><h2 id="task-modal-title">Tạo công việc cho block</h2><p id="task-barcode-context"></p></div>
+          <button class="analysis-close" id="task-modal-close" type="button" aria-label="Đóng cửa sổ phân công">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </header>
         <form class="task-form" id="task-form">
           <input type="hidden" id="task-barcode" />
-          <label class="task-field task-field-wide"><span>Nội dung công việc</span><input id="task-title" required placeholder="Ví dụ: Xác minh đơn hàng và chốt phương án sử dụng block" /></label>
+          <label class="task-field task-field-wide"><span>Nội dung công việc</span><input id="task-title" required placeholder="Ví dụ: Cùng xác minh đơn hàng và thống nhất phương án sử dụng block" /></label>
           <label class="task-field"><span>Người phụ trách</span><input id="task-assignee" required placeholder="Họ tên hoặc bộ phận" /></label>
           <label class="task-field"><span>Ngày giao</span><input id="task-start-date" type="date" required /></label>
-          <label class="task-field"><span>Deadline</span><input id="task-deadline" type="date" required /></label>
+          <label class="task-field"><span>Thời hạn</span><input id="task-deadline" type="date" required /></label>
           <label class="task-field"><span>Mức ưu tiên</span><select id="task-priority"><option>Khẩn cấp</option><option selected>Cao</option><option>Trung bình</option><option>Thấp</option></select></label>
           <label class="task-field"><span>Trạng thái</span><select id="task-status"><option>Chưa bắt đầu</option><option>Đang xử lý</option><option>Chờ xác nhận</option><option>Hoàn thành</option></select></label>
-          <label class="task-field task-field-wide"><span>Yêu cầu / ghi chú xử lý</span><textarea id="task-note" rows="4" placeholder="Kết quả cần đạt, phương án dự kiến hoặc điểm cần xác minh"></textarea></label>
-          <div class="task-form-actions"><button class="secondary-button" id="task-cancel" type="button">Hủy</button><button class="task-submit" type="submit">Giao nhiệm vụ</button></div>
+          <label class="task-field task-field-wide"><span>Kết quả mong đợi / ghi chú</span><textarea id="task-note" rows="4" placeholder="Kết quả mong đợi, phương án dự kiến hoặc nội dung muốn cùng làm rõ"></textarea></label>
+          <div class="task-form-actions"><button class="secondary-button" id="task-cancel" type="button">Hủy</button><button class="task-submit" type="submit">Phân công</button></div>
         </form>
       </section>
     </div>

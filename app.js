@@ -17,31 +17,31 @@ const pageConfig = {
   guide: {
     label: "Hướng dẫn sử dụng",
     title: "Cách sử dụng báo cáo trong cuộc họp kho",
-    description: "Đi từ bức tranh tổng quan đến barcode cần xử lý, giao người phụ trách và kiểm soát deadline.",
+    description: "Đi từ bức tranh tổng quan đến từng barcode, cùng phân công người phụ trách và theo dõi thời hạn.",
     kicker: "Bắt đầu tại đây",
   },
   overview: {
     label: "Tổng quan",
     title: "Tồn kho mousse dưới góc nhìn điều hành",
-    description: "Ban quản trị kho nhìn nhanh tồn gì, ở đâu, vì sao tồn và nên xử lý nhóm nào trước.",
+    description: "Ban quản trị kho nhìn nhanh tồn gì, ở đâu, nguyên nhân tồn và nhóm nào nên cùng xem xét trước.",
     kicker: "Điều hành tồn kho",
   },
   warehouse: {
     label: "Theo kho",
     title: "Kho nào đang giữ loại tồn nào",
-    description: "Nhìn rõ vai trò kho, quy mô tồn và nhóm tồn cần làm việc ngay trong từng kho.",
+    description: "Nhìn rõ vai trò kho, quy mô tồn và các nhóm nên cùng trao đổi tại từng kho.",
     kicker: "Phân tích kho",
   },
   product: {
     label: "Theo sản phẩm",
     title: "Sản phẩm và màu sắc đang chiếm dung tích",
-    description: "Theo dõi sản phẩm, màu và trạng thái để chốt hướng xử lý theo từng nhóm mousse.",
+    description: "Theo dõi sản phẩm, màu và trạng thái để cùng thống nhất hướng xử lý cho từng nhóm mousse.",
     kicker: "Phân tích sản phẩm",
   },
   aging: {
     label: "Tuổi tồn",
-    title: "Tuổi tồn và áp lực xử lý",
-    description: "Đo tuổi tồn theo ngày nhập để nhận diện vùng an toàn, vùng cần theo dõi và vùng cần hành động.",
+    title: "Theo dõi tuổi tồn kho",
+    description: "Đo tuổi tồn theo ngày nhập để nhận diện vùng ổn định và các nhóm nên được quan tâm thêm.",
     kicker: "Tuổi tồn",
   },
   status: {
@@ -52,9 +52,9 @@ const pageConfig = {
   },
   actions: {
     label: "Phương án xử lý",
-    title: "Danh sách ưu tiên hành động",
-    description: "Biến dữ liệu kho thành danh sách việc cần làm để chuẩn bị cho cuộc họp quản trị kho.",
-    kicker: "Khuyến nghị xử lý",
+    title: "Gợi ý phối hợp xử lý",
+    description: "Tổng hợp dữ liệu kho thành các nội dung để đội ngũ cùng trao đổi trong cuộc họp.",
+    kicker: "Gợi ý phối hợp",
   },
   details: {
     label: "Chi tiết block",
@@ -64,9 +64,9 @@ const pageConfig = {
   },
   workflow: {
     label: "Luồng công việc",
-    title: "Kiểm soát nhiệm vụ xử lý tồn kho",
-    description: "Theo dõi người phụ trách, deadline và tiến độ xử lý đến từng barcode mousse.",
-    kicker: "Điều hành công việc",
+    title: "Theo dõi công việc xử lý tồn kho",
+    description: "Cùng theo dõi người phụ trách, thời hạn và tiến độ đến từng barcode mousse.",
+    kicker: "Phối hợp công việc",
   },
 };
 
@@ -504,16 +504,16 @@ function actionsList(rows = state.filtered) {
     items.push({
       title: "Rà soát nhóm SX dư đang chiếm dung tích",
       note: `${formatNumber(sum(surplus, "closeUnits"), 0)} block · ${formatNumber(sum(surplus, "closeVolume"), 1)} m³`,
-      detail: "Đây là nhóm tồn không gắn trực tiếp với đơn hàng, phù hợp ưu tiên lên phương án chuyển đổi hoặc tiêu thụ trước.",
+      detail: "Đây là nhóm tồn không gắn trực tiếp với đơn hàng; đội ngũ có thể cùng xem xét phương án chuyển đổi hoặc sử dụng phù hợp.",
       type: "status",
       value: "SX dư",
     });
   }
   if (noStatus.length) {
     items.push({
-      title: "Bổ sung trạng thái nghiệp vụ cho nhóm chưa xác định",
-      note: `${formatNumber(sum(noStatus, "closeUnits"), 0)} block chưa có logic rõ`,
-      detail: "Nhóm này sẽ gây khó khi họp vì không trả lời được tồn này phục vụ đơn hàng hay mục đích nào khác.",
+      title: "Cùng hoàn thiện trạng thái cho nhóm chưa xác định",
+      note: `${formatNumber(sum(noStatus, "closeUnits"), 0)} block đang chờ bổ sung thông tin`,
+      detail: "Việc bổ sung thêm thông tin sẽ giúp đội ngũ hiểu rõ nhóm tồn đang phục vụ đơn hàng hay mục đích khác.",
       type: "status",
       value: "Chưa xác định",
     });
@@ -522,7 +522,7 @@ function actionsList(rows = state.filtered) {
     items.push({
       title: "Theo dõi nhóm tồn trên 60 ngày",
       note: `${formatNumber(sum(old, "closeUnits"), 0)} block · ${formatNumber(sum(old, "closeVolume"), 1)} m³`,
-      detail: "Nếu nhóm này tiếp tục kéo dài, cần chốt ngay sản phẩm nào, màu nào và trạng thái nào đang làm tăng tuổi tồn.",
+      detail: "Đội ngũ có thể cùng xem lại sản phẩm, màu và trạng thái đang đóng góp nhiều vào tuổi tồn của nhóm này.",
       type: "age",
       value: "61–90 ngày",
     });
@@ -538,8 +538,8 @@ function actionsList(rows = state.filtered) {
   }
   if (!items.length) {
     items.push({
-      title: "Tồn kho đang ở vùng khá sạch",
-      note: `${formatNumber(rows.length, 0)} dòng tồn hiện tại chưa lộ rủi ro lớn`,
+      title: "Tồn kho hiện đang tương đối ổn định",
+      note: `${formatNumber(rows.length, 0)} dòng tồn hiện tại chưa có điểm bất thường lớn`,
       detail: "Có thể chuyển trọng tâm sang nhịp xuất nhập, tần suất xoay vòng và năng suất sử dụng kho.",
       type: "all",
       value: "",
@@ -577,7 +577,7 @@ function productTable(rows = state.filtered) {
 }
 
 function detailsTable(rows = state.filtered) {
-  return `<div class="table-wrap"><table><thead><tr><th>Block</th><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>Vị trí</th><th>Trạng thái</th><th>SL tồn</th><th>m3 tồn</th><th>Ngày nhập</th><th>Tuổi tồn</th><th>Giao việc</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Block</th><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>Vị trí</th><th>Trạng thái</th><th>SL tồn</th><th>m3 tồn</th><th>Ngày nhập</th><th>Tuổi tồn</th><th>Phân công</th></tr></thead><tbody>
     ${rows.map(row => `<tr>
       <td><div class="product-cell"><strong>${row.barcode || row.rowId}</strong><span>${row.rowId}</span></div></td>
       <td>${row.product}</td>
@@ -589,31 +589,31 @@ function detailsTable(rows = state.filtered) {
       <td class="numeric" data-sort-value="${row.closeVolume}">${formatNumber(row.closeVolume, 2)}</td>
       <td data-sort-value="${row.receiptDate}">${formatDate(row.receiptDate)}</td>
       <td class="numeric" data-sort-value="${row.daysInStock || 0}">${row.daysInStock ?? "—"}${row.daysInStock != null ? " ngày" : ""}</td>
-      <td><button class="assign-task-button" type="button" data-assign-barcode="${row.barcode || row.rowId}">${state.tasks.filter(task => task.barcode === (row.barcode || row.rowId) && task.status !== "Hoàn thành").length ? "Xem / giao thêm" : "Giao việc"}</button></td>
+      <td><button class="assign-task-button" type="button" data-assign-barcode="${row.barcode || row.rowId}">${state.tasks.filter(task => task.barcode === (row.barcode || row.rowId) && task.status !== "Hoàn thành").length ? "Xem / phân công thêm" : "Phân công"}</button></td>
     </tr>`).join("")}
   </tbody></table></div>`;
 }
 
 function guidePage() {
   const steps = [
-    { number: "01", title: "Chọn phạm vi cần họp", text: "Vào Tổng quan rồi lọc theo kho, sản phẩm, màu sắc, tuổi tồn hoặc ClassCode.", page: "overview", action: "Mở Tổng quan" },
+    { number: "01", title: "Chọn phạm vi trao đổi", text: "Vào Tổng quan rồi lọc theo kho, sản phẩm, màu sắc, tuổi tồn hoặc ClassCode.", page: "overview", action: "Mở Tổng quan" },
     { number: "02", title: "Nhìn biến động nhập – xuất", text: "Đọc cột m³, đường số block và luồng ròng theo ngày, tuần hoặc tháng.", page: "overview", action: "Xem nhịp kho" },
     { number: "03", title: "Drill xuống nguyên nhân", text: "Nhấn biểu đồ, ô tuổi × trạng thái hoặc dòng sản phẩm để mở màn hình inside.", page: "aging", action: "Mở Tuổi tồn" },
-    { number: "04", title: "Chốt đến từng barcode", text: "Trong bảng inside hoặc Chi tiết block, xác định đúng block cần xử lý.", page: "details", action: "Mở Chi tiết block" },
-    { number: "05", title: "Giao người và deadline", text: "Nhấn Giao việc, nhập người phụ trách, ngày giao, deadline, ưu tiên và yêu cầu đầu ra.", page: "details", action: "Bắt đầu giao việc" },
-    { number: "06", title: "Kiểm soát đến khi hoàn thành", text: "Theo dõi việc mở, quá hạn, sắp đến hạn và cập nhật trạng thái trong Luồng công việc.", page: "workflow", action: "Mở Luồng công việc" },
+    { number: "04", title: "Xem đến từng barcode", text: "Trong bảng inside hoặc Chi tiết block, chọn đúng block để cùng xem xét.", page: "details", action: "Mở Chi tiết block" },
+    { number: "05", title: "Phân công và thống nhất thời hạn", text: "Nhấn Phân công, nhập người phụ trách, ngày giao, thời hạn, mức ưu tiên và kết quả mong đợi.", page: "details", action: "Bắt đầu phân công" },
+    { number: "06", title: "Cùng theo dõi đến khi hoàn thành", text: "Theo dõi việc đang mở, thời hạn và cập nhật trạng thái trong Luồng công việc.", page: "workflow", action: "Mở Luồng công việc" },
   ];
   return `
     <section class="guide-hero">
       <div>
         <span class="guide-label">Quy trình họp kho</span>
-        <h2>Từ một tín hiệu tồn kho<br>đến một hành động có người phụ trách</h2>
-        <p>Báo cáo được thiết kế để cuộc họp không dừng ở việc “nhìn số”. Mỗi vấn đề cần được drill đến barcode, giao người xử lý và theo dõi đến deadline.</p>
+        <h2>Từ một tín hiệu tồn kho<br>đến phương án phối hợp rõ ràng</h2>
+        <p>Báo cáo giúp đội ngũ cùng nhìn số liệu, xem chi tiết đến barcode, thống nhất người phụ trách và theo dõi tiến độ.</p>
         <button type="button" data-go-page="overview">Bắt đầu xem Tổng quan <span>→</span></button>
       </div>
       <div class="guide-principle">
         <span>Nguyên tắc sử dụng</span>
-        <strong>1 vấn đề</strong><i>→</i><strong>1 barcode</strong><i>→</i><strong>1 người phụ trách</strong><i>→</i><strong>1 deadline</strong>
+        <strong>1 nội dung</strong><i>→</i><strong>1 barcode</strong><i>→</i><strong>1 người phụ trách</strong><i>→</i><strong>1 thời hạn</strong>
       </div>
     </section>
     <section class="guide-steps">
@@ -636,13 +636,13 @@ function guidePage() {
       </section>
       <section class="guide-reference">
         <span class="guide-reference-kicker">Trong cuộc họp</span>
-        <h3>Ba câu hỏi cần chốt</h3>
+        <h3>Ba nội dung cùng thống nhất</h3>
         <ol>
           <li>Block này tồn vì đơn hàng, sản xuất dư hay nguyên nhân khác?</li>
-          <li>Phương án xử lý cụ thể là sử dụng, chuyển đổi, điều chuyển hay loại bỏ?</li>
-          <li>Ai là người phụ trách và deadline dự kiến là ngày nào?</li>
+          <li>Phương án phù hợp là sử dụng, chuyển đổi, điều chuyển hay loại bỏ?</li>
+          <li>Ai sẽ phụ trách và thời hạn dự kiến là ngày nào?</li>
         </ol>
-        <p class="guide-storage-note">Nhiệm vụ hiện được lưu trên trình duyệt của máy đang sử dụng. Cần backend để đồng bộ nhiều người dùng.</p>
+        <p class="guide-storage-note">Nhiệm vụ hiện được lưu trên trình duyệt của máy đang sử dụng. Có thể bổ sung backend khi cần đồng bộ nhiều người dùng.</p>
       </section>
     </div>
   `;
@@ -672,10 +672,10 @@ function overviewPage(rows = state.filtered) {
     </div>
     <div class="dashboard-grid overview-secondary-grid">
       <div class="overview-side-stack">
-        ${panel("Cơ cấu tuổi tồn", "Nhìn nhanh vùng an toàn và vùng cần chú ý", stackedDistribution(ageDistribution(rows), "age"), `${formatNumber(sum(rows.filter(row => row.daysInStock > 60), "closeVolume"), 1)} m³ trên 60 ngày`)}
+        ${panel("Cơ cấu tuổi tồn", "Nhìn nhanh vùng ổn định và vùng nên quan tâm thêm", stackedDistribution(ageDistribution(rows), "age"), `${formatNumber(sum(rows.filter(row => row.daysInStock > 60), "closeVolume"), 1)} m³ trên 60 ngày`)}
         ${panel("Tuổi tồn theo màu", "Màu nào đang có tuổi bình quân cao hơn", ageByColorChart(rows), "Theo m³ tồn")}
       </div>
-      ${panel("Đề xuất cho cuộc họp kho", "Gợi ý các nhóm nên được chốt phương án xử lý trước", actionsList(rows))}
+      ${panel("Gợi ý cho cuộc họp kho", "Các nhóm đội ngũ có thể cùng xem xét và thống nhất phương án", actionsList(rows))}
     </div>
   `;
 }
@@ -683,7 +683,7 @@ function overviewPage(rows = state.filtered) {
 function warehousePage(rows = state.filtered) {
   return `<div class="warehouse-grid">${warehouseCards(rows)}</div>
     <div class="dashboard-grid section-gap">
-      ${panel("Tồn theo tuổi trong từng kho", "Dùng để hỏi đúng câu chuyện ở từng kho", heatmap(rows))}
+      ${panel("Tồn theo tuổi trong từng kho", "Hỗ trợ trao đổi đúng trọng tâm tại từng kho", heatmap(rows))}
       ${panel("Tuổi theo màu", "Màu nào đang có tuổi tồn bình quân cao hơn", ageByColorChart(rows), "Tuổi TB theo m³")}
     </div>`;
 }
@@ -710,8 +710,8 @@ function agingPage(rows = state.filtered) {
       ${panel("Tuổi tồn x trạng thái", "Nhấn từng ô để xem sản phẩm nào nằm trong vùng đó", heatmap(rows))}
     </div>
     <div class="dashboard-grid equal">
-      ${panel("Danh sách block già nhất", "Tập trung nhóm có nguy cơ chậm xử lý", detailsTable([...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0)).slice(0, 12)), "", "table-panel")}
-      ${panel("Khuyến nghị theo tuổi tồn", "Không phải tất cả hàng già đều cần xử lý giống nhau", actionsList(rows.filter(row => row.daysInStock > 30)))}
+      ${panel("Danh sách block có tuổi tồn cao", "Hỗ trợ đội ngũ cùng xem xét các nhóm tồn lâu", detailsTable([...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0)).slice(0, 12)), "", "table-panel")}
+      ${panel("Gợi ý theo tuổi tồn", "Mỗi nhóm tuổi tồn có thể phù hợp với một phương án khác nhau", actionsList(rows.filter(row => row.daysInStock > 30)))}
     </div>`;
 }
 
@@ -735,7 +735,7 @@ function statusPage(rows = state.filtered) {
       </article>`).join("")}
     </div>
     <div class="dashboard-grid section-gap">
-      ${panel("Remark đang đi cùng tồn kho", "Nhấn một dòng để xem toàn bộ barcode và giao việc xử lý", remarkTable(rows, "statusSecondary", "Remark"))}
+      ${panel("Remark đang đi cùng tồn kho", "Nhấn một dòng để xem toàn bộ barcode và cùng phân công xử lý", remarkTable(rows, "statusSecondary", "Remark"))}
       ${panel("Remark 1 đi kèm", "Nhấn một dòng để drill xuống các block liên quan", remarkTable(rows, "statusTertiary", "Remark 1"))}
     </div>`;
 }
@@ -756,11 +756,11 @@ function remarkTable(rows, key, label) {
 
 function actionsPage(rows = state.filtered) {
   return `<div class="dashboard-grid">
-      ${panel("Danh sách ưu tiên xử lý", "Nhóm nào cần hỏi trong cuộc họp và vì sao", actionsList(rows))}
-      ${panel("Top sản phẩm cần chất vấn", "Lấy theo nhóm vừa tồn nhiều vừa thiếu rõ trạng thái", productRiskTable(rows))}
+      ${panel("Các nhóm nên cùng xem xét", "Tổng hợp những nội dung hữu ích cho cuộc họp và lý do", actionsList(rows))}
+      ${panel("Sản phẩm nổi bật để cùng rà soát", "Xếp theo quy mô tồn và mức độ đầy đủ của thông tin trạng thái", productRiskTable(rows))}
     </div>
     <div class="dashboard-grid equal">
-      ${panel("Tập trung theo kho", "Gợi ý câu hỏi điều hành cho từng kho", warehouseQuestions(rows))}
+      ${panel("Góc nhìn theo kho", "Gợi ý nội dung để các bộ phận cùng trao đổi", warehouseQuestions(rows))}
       ${panel("Nhịp nhập xuất kho gần nhất", "Đối chiếu m³, số block và chênh lệch ròng", movementChart(), "ReceiptDate / DeliveryDate")}
     </div>`;
 }
@@ -794,21 +794,21 @@ function workflowPage() {
   return `
     <section class="kpi-grid task-kpis">
       ${kpiCard("Việc đang mở", open.length, `${unique(open.map(task => task.barcode)).length} barcode đang được theo dõi`, "flow", "brand")}
-      ${kpiCard("Đã quá hạn", overdue.length, overdue.length ? "Cần chốt người xử lý ngay" : "Không có việc quá hạn", "clock", "warning")}
-      ${kpiCard("Đến hạn ≤ 3 ngày", dueSoon.length, "Nhóm cần kiểm tra trong cuộc họp", "actions", "info")}
+      ${kpiCard("Đã quá hạn", overdue.length, overdue.length ? "Nên cùng cập nhật người phụ trách và tiến độ" : "Không có việc quá hạn", "clock", "warning")}
+      ${kpiCard("Đến hạn ≤ 3 ngày", dueSoon.length, "Nhóm nên được cùng cập nhật trong cuộc họp", "actions", "info")}
       ${kpiCard("Đã hoàn thành", done.length, tasks.length ? `${formatNumber(done.length / tasks.length * 100, 0)}% tổng nhiệm vụ` : "Chưa có nhiệm vụ", "blocks", "success")}
     </section>
     <div class="dashboard-grid">
       ${panel("Bức tranh luồng việc", "Số nhiệm vụ đang nằm tại mỗi bước xử lý", `<div class="workflow-pipeline">${workflow.map((item, index) => `<div><span>${String(index + 1).padStart(2, "0")}</span><strong>${item.count}</strong><small>${item.status}</small></div>`).join("")}</div>`, `${tasks.length} nhiệm vụ`)}
-      ${panel("Tải việc theo người phụ trách", "Nhìn nhanh ai đang giữ nhiều việc hoặc có việc quá hạn", assignees.length ? `<div class="assignee-load">${assignees.map(item => `<div><span><strong>${item.name}</strong><small>${item.total} nhiệm vụ</small></span><b>${item.open} đang mở</b><em class="${item.overdue ? "has-overdue" : ""}">${item.overdue} quá hạn</em></div>`).join("")}</div>` : '<div class="empty-state"><strong>Chưa có người phụ trách</strong><span>Giao việc từ bảng barcode để bắt đầu theo dõi.</span></div>')}
+      ${panel("Phân bổ công việc theo người phụ trách", "Hỗ trợ cân đối công việc và cùng cập nhật các nhiệm vụ đến hạn", assignees.length ? `<div class="assignee-load">${assignees.map(item => `<div><span><strong>${item.name}</strong><small>${item.total} nhiệm vụ</small></span><b>${item.open} đang mở</b><em class="${item.overdue ? "has-overdue" : ""}">${item.overdue} quá hạn</em></div>`).join("")}</div>` : '<div class="empty-state"><strong>Chưa có người phụ trách</strong><span>Có thể phân công từ bảng barcode để bắt đầu theo dõi.</span></div>')}
     </div>
     ${panel("Danh sách nhiệm vụ theo barcode", "Có thể cập nhật tiến độ ngay trong bảng; dữ liệu đang lưu trên trình duyệt này", taskTable(tasks), `${open.length} việc đang mở`, "table-panel")}
   `;
 }
 
 function taskTable(tasks) {
-  if (!tasks.length) return '<div class="empty-state"><strong>Chưa có nhiệm vụ</strong><span>Mở một sản phẩm hoặc bảng chi tiết block và chọn “Giao việc”.</span></div>';
-  return `<div class="table-wrap"><table><thead><tr><th>Barcode / sản phẩm</th><th>Nhiệm vụ</th><th>Phụ trách</th><th>Ngày giao</th><th>Deadline</th><th>Ưu tiên</th><th>Tiến độ</th><th>Tình trạng hạn</th></tr></thead><tbody>
+  if (!tasks.length) return '<div class="empty-state"><strong>Chưa có nhiệm vụ</strong><span>Mở một sản phẩm hoặc bảng chi tiết block và chọn “Phân công”.</span></div>';
+  return `<div class="table-wrap"><table><thead><tr><th>Barcode / sản phẩm</th><th>Nhiệm vụ</th><th>Phụ trách</th><th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Tiến độ</th><th>Tình trạng hạn</th></tr></thead><tbody>
     ${tasks.map(task => {
       const record = state.records.find(row => (row.barcode || row.rowId) === task.barcode);
       const due = taskDueState(task);
@@ -842,7 +842,7 @@ function warehouseQuestions(rows) {
     const topStatus = dominant(items, "status");
     return `<div class="question-card">
       <strong>${warehouse} · ${role}</strong>
-      <p>Tồn chủ đạo hiện là <b>${topStatus}</b> với ${formatNumber(sum(items, "closeVolume"), 1)} m³. Cần hỏi tiếp: vì sao nhóm này còn tồn, có gắn đơn hàng hay không, và phương án xử lý là gì.</p>
+      <p>Tồn chủ đạo hiện là <b>${topStatus}</b> với ${formatNumber(sum(items, "closeVolume"), 1)} m³. Đội ngũ có thể cùng làm rõ nguyên nhân tồn, mức độ gắn với đơn hàng và phương án phù hợp.</p>
     </div>`;
   });
   return `<div class="question-list">${blocks.join("")}</div>`;
@@ -961,11 +961,11 @@ function openAnalysis(rows, title, subtitle) {
       <div><span>Block tồn</span><strong>${formatNumber(sum(rows, "closeUnits"), 0)}</strong></div>
       <div><span>Dung tích</span><strong>${formatNumber(sum(rows, "closeVolume"), 1)} m³</strong></div>
       <div><span>Tuổi TB</span><strong>${formatNumber(weightedAge(rows), 0)} ngày</strong></div>
-      <div class="analysis-risk ${rows.some(row => row.status === "Chưa xác định") ? "has-risk" : ""}"><span>Điểm cần hỏi</span><strong>${dominant(rows, "status")}</strong></div>
+      <div class="analysis-risk ${rows.some(row => row.status === "Chưa xác định") ? "has-risk" : ""}"><span>Nội dung cùng trao đổi</span><strong>${dominant(rows, "status")}</strong></div>
     </div>
     <div class="dashboard-grid equal">
       ${panel("Kho đang giữ nhóm này", "Để biết tồn đang nằm ở đâu", barChart(unique(rows.map(row => row.warehouse)).map(warehouse => ({ label: warehouse, value: sum(rows.filter(row => row.warehouse === warehouse), "closeVolume"), drillType: "warehouse", drillValue: warehouse })), value => `${formatNumber(value, 1)} m³`, "#34373c"))}
-      ${panel("Trạng thái phụ nổi bật", "Nhấn để xem barcode và giao việc", topRemarks.length ? barChart(topRemarks.map(item => ({ label: item.name, value: item.volume, drillType: "remark", drillValue: escapeAttr(item.name) })), value => `${formatNumber(value, 1)} m³`, "#b22536") : '<div class="empty-state"><strong>Không có dữ liệu</strong><span>Nhóm này chưa có trạng thái phụ.</span></div>')}
+      ${panel("Trạng thái phụ nổi bật", "Nhấn để xem barcode và cùng phân công", topRemarks.length ? barChart(topRemarks.map(item => ({ label: item.name, value: item.volume, drillType: "remark", drillValue: escapeAttr(item.name) })), value => `${formatNumber(value, 1)} m³`, "#b22536") : '<div class="empty-state"><strong>Không có dữ liệu</strong><span>Nhóm này chưa có trạng thái phụ.</span></div>')}
     </div>
     ${panel("Danh sách block liên quan", "Phạm vi theo drill hiện tại", detailsTable(rows.slice(0, 40)), `${formatNumber(rows.length, 0)} block`, "table-panel")}
   `;
@@ -1037,7 +1037,7 @@ function createTask() {
   saveTasks();
   closeTaskModal();
   renderPage();
-  toast(`Đã giao việc cho ${els.taskAssignee.value.trim()} theo barcode ${els.taskBarcode.value}`);
+  toast(`Đã phân công cho ${els.taskAssignee.value.trim()} theo barcode ${els.taskBarcode.value}`);
 }
 
 function bindEvents() {
@@ -1145,7 +1145,7 @@ function bindEvents() {
   els.taskForm.addEventListener("submit", event => {
     event.preventDefault();
     if (els.taskDeadline.value < els.taskStartDate.value) {
-      toast("Deadline phải bằng hoặc sau ngày giao");
+      toast("Thời hạn nên bằng hoặc sau ngày giao");
       return;
     }
     createTask();
