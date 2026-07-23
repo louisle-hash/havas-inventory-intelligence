@@ -683,8 +683,8 @@ function overviewPage(rows = state.filtered) {
 function warehousePage(rows = state.filtered) {
   return `<div class="warehouse-grid">${warehouseCards(rows)}</div>
     <div class="dashboard-grid section-gap">
-      ${panel("Tuổi theo màu", "Màu nào đang có tuổi tồn bình quân cao hơn", ageByColorChart(rows), "Tuổi TB theo m³")}
       ${panel("Tồn theo tuổi trong từng kho", "Dùng để hỏi đúng câu chuyện ở từng kho", heatmap(rows))}
+      ${panel("Tuổi theo màu", "Màu nào đang có tuổi tồn bình quân cao hơn", ageByColorChart(rows), "Tuổi TB theo m³")}
     </div>`;
 }
 
