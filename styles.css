@@ -89,6 +89,11 @@ main { padding: 28px; max-width: 1600px; margin: 0 auto; }
 .tone-info { --tone: var(--info); --tone-bg: var(--info-light); }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, .8fr); gap: 12px; margin-bottom: 12px; }
 .dashboard-grid.equal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.overview-primary-grid, .overview-secondary-grid { align-items: start; }
+.overview-side-stack { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.overview-side-stack > .panel { min-width: 0; }
+.overview-primary-grid .overview-side-stack .bar-chart { gap: 8px; }
+.overview-primary-grid .overview-side-stack .bar-row { grid-template-columns: minmax(92px,1fr) minmax(70px,1.2fr) auto; }
 .panel { min-width: 0; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow); }
 .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .panel-header h2 { margin: 0; color: var(--ink); font-size: 15px; }

@@ -650,6 +650,12 @@ function guidePage() {
 
 function overviewPage(rows = state.filtered) {
   const oldest = [...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0))[0];
+  const topProducts = productGroups(rows).sort((a, b) => b.volume - a.volume).slice(0, 5).map(item => ({
+    label: `${item.product} · ${item.color}`,
+    value: item.volume,
+    drillType: "product",
+    drillValue: item.productFull,
+  }));
   return `
     <section class="kpi-grid">
       ${kpiCard("Block đang tồn", `${formatNumber(sum(rows, "closeUnits"), 0)}`, `${formatNumber(rows.length, 0)} dòng tồn dương`, "blocks", "brand")}
@@ -657,12 +663,18 @@ function overviewPage(rows = state.filtered) {
       ${kpiCard("Tuổi tồn bình quân", `${formatNumber(weightedAge(rows), 0)} ngày`, "Tính theo ngày nhập của lượng tồn hiện tại", "clock", "warning")}
       ${kpiCard("Block lâu nhất", oldest ? `${oldest.daysInStock || 0} ngày` : "—", oldest ? `${oldest.productFull} · ${oldest.warehouse}` : "Không có dữ liệu", "flow", "success")}
     </section>
-    <div class="dashboard-grid">
+    <div class="dashboard-grid overview-primary-grid">
       ${panel("Nhịp nhập xuất kho", "So sánh đồng thời m³ và số block để nhìn tốc độ luân chuyển", movementChart(), "ReceiptDate / DeliveryDate")}
-      ${panel("Cơ cấu trạng thái đang tồn", "Nhóm tồn chính theo ClassCode", stackedDistribution(statusDistribution(rows), "status"))}
+      <div class="overview-side-stack">
+        ${panel("Cơ cấu trạng thái đang tồn", "Nhóm tồn chính theo ClassCode", stackedDistribution(statusDistribution(rows), "status"))}
+        ${panel("Top 5 sản phẩm chiếm dung tích", "Nhấn từng dòng để mở phân tích barcode", barChart(topProducts, value => `${formatNumber(value, 1)} m³`, "#b22536"))}
+      </div>
     </div>
-    <div class="dashboard-grid">
-      ${panel("Cơ cấu tuổi tồn", "Nhìn nhanh vùng an toàn và vùng cần chú ý", stackedDistribution(ageDistribution(rows), "age"), `${formatNumber(sum(rows.filter(row => row.daysInStock > 60), "closeVolume"), 1)} m³ trên 60 ngày`)}
+    <div class="dashboard-grid overview-secondary-grid">
+      <div class="overview-side-stack">
+        ${panel("Cơ cấu tuổi tồn", "Nhìn nhanh vùng an toàn và vùng cần chú ý", stackedDistribution(ageDistribution(rows), "age"), `${formatNumber(sum(rows.filter(row => row.daysInStock > 60), "closeVolume"), 1)} m³ trên 60 ngày`)}
+        ${panel("Tuổi tồn theo màu", "Màu nào đang có tuổi bình quân cao hơn", ageByColorChart(rows), "Theo m³ tồn")}
+      </div>
       ${panel("Đề xuất cho cuộc họp kho", "Gợi ý các nhóm nên được chốt phương án xử lý trước", actionsList(rows))}
     </div>
   `;
