@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import re
 import unicodedata
 from collections import Counter
 from datetime import date, datetime
@@ -11,7 +12,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "data" / "inventory.json"
-REPORT_DATE = date(2026, 7, 23)
 CSV_PATTERN = "*TongHopNhapXuatMousseBlo*.csv"
 
 WAREHOUSE_META = {
@@ -44,6 +44,13 @@ def pick_source() -> Path:
     if not files:
         raise FileNotFoundError(f"Không tìm thấy file CSV khớp mẫu {CSV_PATTERN}")
     return files[0]
+
+
+def report_date_from_source(path: Path) -> date:
+    match = re.search(r"_(\d{8})(?:\d{4})?\.csv$", path.name)
+    if match:
+        return datetime.strptime(match.group(1), "%Y%m%d").date()
+    return date.today()
 
 
 def normalize(value: str | None) -> str:
@@ -127,6 +134,7 @@ def safe_round(value: float, digits: int = 4) -> float:
 
 
 source = pick_source()
+REPORT_DATE = report_date_from_source(source)
 
 with source.open("r", encoding="utf-8-sig", newline="") as handle:
     rows = list(csv.DictReader(handle))
@@ -273,8 +281,12 @@ payload = {
     "summary": summary,
     "dictionaries": {
         "warehouses": [
-            {"code": code, "label": meta["label"], "role": meta["role"]}
-            for code, meta in WAREHOUSE_META.items()
+            {
+                "code": code,
+                "label": WAREHOUSE_META.get(code, {"label": code})["label"],
+                "role": WAREHOUSE_META.get(code, {"role": "Kho khác"})["role"],
+            }
+            for code in sorted({record["warehouse"] for record in raw_records})
         ],
         "colors": sorted(color_counter),
         "statuses": sorted(status_counter),

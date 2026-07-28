@@ -5,7 +5,7 @@ const state = {
   movements: [],
   filtered: [],
   page: "guide",
-  reportDate: "2026-07-23",
+  reportDate: "2026-07-28",
   timeline: "week",
   movementMetric: "volume",
   tasks: [],
@@ -890,7 +890,7 @@ function populateFilters() {
   const colors = unique(state.records.map(row => row.color));
   const ages = unique(state.records.map(row => row.ageBucket));
   const statuses = unique(state.records.map(row => row.status));
-  const warehouses = unique(state.rawRecords.map(row => row.warehouse));
+  const warehouses = unique(state.records.map(row => row.warehouse));
   els.warehouseFilter.innerHTML = `<option value="all">Tất cả kho</option>${optionsMarkup(warehouses, state.filters.warehouse)}`;
   els.productFilter.innerHTML = `<option value="all">Tất cả sản phẩm</option>${optionsMarkup(products, state.filters.product)}`;
   els.colorFilter.innerHTML = `<option value="all">Tất cả màu</option>${optionsMarkup(colors, state.filters.color)}`;
