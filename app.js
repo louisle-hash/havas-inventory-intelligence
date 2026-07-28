@@ -755,13 +755,14 @@ function remarkTable(rows, key, label) {
 }
 
 function actionsPage(rows = state.filtered) {
-  return `<div class="dashboard-grid">
-      ${panel("Các nhóm nên cùng xem xét", "Tổng hợp những nội dung hữu ích cho cuộc họp và lý do", actionsList(rows))}
+  return `<div class="actions-dashboard">
+    <div class="actions-column actions-column-main">
       ${panel("Sản phẩm nổi bật để cùng rà soát", "Xếp theo quy mô tồn và mức độ đầy đủ của thông tin trạng thái", productRiskTable(rows))}
-    </div>
-    <div class="dashboard-grid equal">
-      ${panel("Góc nhìn theo kho", "Gợi ý nội dung để các bộ phận cùng trao đổi", warehouseQuestions(rows))}
       ${panel("Nhịp nhập xuất kho gần nhất", "Đối chiếu m³, số block và chênh lệch ròng", movementChart(), "ReceiptDate / DeliveryDate")}
+    </div>
+    <div class="actions-column actions-column-support">
+      ${panel("Các nhóm nên cùng xem xét", "Tổng hợp những nội dung hữu ích cho cuộc họp và lý do", actionsList(rows))}
+      ${panel("Góc nhìn theo kho", "Gợi ý nội dung để các bộ phận cùng trao đổi", warehouseQuestions(rows))}
     </div>`;
 }
 
