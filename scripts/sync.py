@@ -39,10 +39,30 @@ KNOWN_COLORS = [
 # ---------------------------------------------------------------- tiện ích --
 
 def env(key: str, default: str | None = None) -> str:
+    """Trên GitHub Actions, secret chưa đặt sẽ thành chuỗi RỖNG chứ không phải
+    thiếu hẳn — nên phải coi rỗng cũng là thiếu, nếu không sẽ đổ lỗi khó hiểu
+    tận sâu trong thư viện thay vì báo đúng biến nào chưa có."""
     value = os.environ.get(key, default)
-    if value is None:
-        sys.exit(f"Thiếu biến {key} trong .env")
+    if value is None or (isinstance(value, str) and not value.strip()):
+        sys.exit(f"Thiếu biến {key}. Kiểm tra file .env, hoặc GitHub Secrets nếu chạy trên Actions.")
     return value
+
+
+BIEN_BAT_BUOC = ["MSSQL_HOST", "MSSQL_DATABASE", "MSSQL_USER", "MSSQL_PASSWORD",
+                 "SP_NAME", "SP_DOC_DATE_FROM", "SUPABASE_URL", "SUPABASE_SECRET_KEY"]
+
+
+def kiem_tra_cau_hinh():
+    """Báo MỘT LẦN tất cả biến còn thiếu, thay vì chết ở biến đầu tiên."""
+    thieu = [k for k in BIEN_BAT_BUOC if not (os.environ.get(k) or "").strip()]
+    if not thieu:
+        return
+    print("\n!! THIẾU CẤU HÌNH — chưa chạy được\n", file=sys.stderr)
+    for k in thieu:
+        print(f"     {k}", file=sys.stderr)
+    o_dau = "GitHub Secrets của repo" if os.environ.get("GITHUB_ACTIONS") else "file .env ở thư mục gốc"
+    print(f"\n   Đặt các biến trên tại: {o_dau}\n", file=sys.stderr)
+    sys.exit(1)
 
 
 def text(value) -> str:
@@ -308,6 +328,7 @@ def main() -> int:
     report_date = (datetime.strptime(args.date, "%Y-%m-%d").date() if args.date
                    else as_date(os.environ.get("SP_DOC_DATE_TO")) or date.today())
 
+    kiem_tra_cau_hinh()
     print(f"\n=== ĐỒNG BỘ TỒN KHO — ngày báo cáo {report_date} ===\n")
     t0 = time.time()
 
