@@ -1,0 +1,55 @@
+name: Đồng bộ tồn kho
+
+# Việt Nam là UTC+7, GitHub chạy theo UTC.
+#   00:00 UTC = 07:00 VN   ·   11:30 UTC = 18:30 VN
+# Nên "0,30 0-11" = mỗi 30 phút, từ 07:00 đến 18:30 giờ Việt Nam.
+on:
+  schedule:
+    - cron: "0,30 0-11 * * 1-5"
+  workflow_dispatch:          # cho phép bấm chạy tay bất cứ lúc nào
+
+# Không cho hai lượt chồng lên nhau nếu một lượt chạy lâu bất thường.
+concurrency:
+  group: dong-bo-ton-kho
+  cancel-in-progress: false
+
+jobs:
+  dong-bo:
+    name: SQL Server → Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cài thư viện
+        run: pip install --quiet pymssql requests python-dotenv
+
+      - name: Chạy đồng bộ
+        env:
+          MSSQL_HOST: ${{ secrets.MSSQL_HOST }}
+          MSSQL_PORT: ${{ secrets.MSSQL_PORT }}
+          MSSQL_DATABASE: ${{ secrets.MSSQL_DATABASE }}
+          MSSQL_USER: ${{ secrets.MSSQL_USER }}
+          MSSQL_PASSWORD: ${{ secrets.MSSQL_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SP_NAME: usp_Vcd_TongHopNhapXuatMousseBlockData
+          SP_DOC_DATE_FROM: "2025-01-01"
+          SP_WAREHOUSE_CODE: TPBL
+          SP_LOOKUP_MODE_WAREHOUSE: "1"
+          SP_ITEM_CODE: "18"
+          SP_LOOKUP_MODE_ITEM: "1"
+          SP_DELIVERY: "0"
+          SP_FOREIGN_CURRENCY_ONLY: "0"
+          SP_USER_ID: "4"
+          SP_LANG_ID: "0"
+          SP_MA_DVCS: A01
+          SP_CURRENCY_CODE: VND
+        run: python scripts/sync.py

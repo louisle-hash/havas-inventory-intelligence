@@ -11,7 +11,84 @@
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="auth-pending">
+
+    <section class="auth-screen" id="auth-screen" hidden aria-label="Đăng nhập">
+      <div class="auth-brand">
+        <img class="auth-logo" src="Logo/logo havas s-01.png" alt="Havas — Better sleep, better life" width="150" height="63" />
+        <div class="auth-stack" aria-hidden="true">
+          <svg viewBox="0 0 324 172" role="presentation">
+            <rect class="stack-block" style="--i:5" x="0" y="143" width="44" height="14" rx="2" fill="#9aa0a7" />
+            <rect class="stack-block" style="--i:4" x="0" y="126" width="44" height="14" rx="2" fill="#9aa0a7" />
+            <rect class="stack-block" style="--i:3" x="0" y="109" width="44" height="14" rx="2" fill="#9aa0a7" />
+            <rect class="stack-block" style="--i:2" x="0" y="92" width="44" height="14" rx="2" fill="#9aa0a7" />
+            <rect class="stack-block" style="--i:1" x="0" y="75" width="44" height="14" rx="2" fill="#9aa0a7" />
+            <rect class="stack-block" style="--i:11" x="56" y="143" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:10" x="56" y="126" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:9" x="56" y="109" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:8" x="56" y="92" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:7" x="56" y="75" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:6" x="56" y="58" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:5" x="56" y="41" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:4" x="56" y="24" width="44" height="14" rx="2" fill="#b22536" />
+            <rect class="stack-block" style="--i:9" x="112" y="143" width="44" height="14" rx="2" fill="#e6e8ea" />
+            <rect class="stack-block" style="--i:8" x="112" y="126" width="44" height="14" rx="2" fill="#e6e8ea" />
+            <rect class="stack-block" style="--i:7" x="112" y="109" width="44" height="14" rx="2" fill="#e6e8ea" />
+            <rect class="stack-block" style="--i:16" x="168" y="143" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:15" x="168" y="126" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:14" x="168" y="109" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:13" x="168" y="92" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:12" x="168" y="75" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:11" x="168" y="58" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:10" x="168" y="41" width="44" height="14" rx="2" fill="#6d737b" />
+            <rect class="stack-block" style="--i:16" x="224" y="143" width="44" height="14" rx="2" fill="#c3c7cb" />
+            <rect class="stack-block" style="--i:15" x="224" y="126" width="44" height="14" rx="2" fill="#c3c7cb" />
+            <rect class="stack-block" style="--i:14" x="224" y="109" width="44" height="14" rx="2" fill="#c3c7cb" />
+            <rect class="stack-block" style="--i:13" x="224" y="92" width="44" height="14" rx="2" fill="#c3c7cb" />
+            <rect class="stack-block" style="--i:21" x="280" y="143" width="44" height="14" rx="2" fill="#8a9097" />
+            <rect class="stack-block" style="--i:20" x="280" y="126" width="44" height="14" rx="2" fill="#8a9097" />
+            <rect class="stack-block" style="--i:19" x="280" y="109" width="44" height="14" rx="2" fill="#8a9097" />
+            <rect class="stack-block" style="--i:18" x="280" y="92" width="44" height="14" rx="2" fill="#8a9097" />
+            <rect class="stack-block" style="--i:17" x="280" y="75" width="44" height="14" rx="2" fill="#8a9097" />
+            <rect class="stack-block" style="--i:16" x="280" y="58" width="44" height="14" rx="2" fill="#8a9097" />
+          </svg>
+        </div>
+        <p class="auth-brand-caption">Mỗi khối là một block mousse đang nằm trong kho.<br />Màu đậm dần theo số ngày tồn.</p>
+      </div>
+
+      <div class="auth-panel">
+        <div class="auth-card">
+          <p class="eyebrow">Inventory Intelligence</p>
+          <h1 class="auth-title">Báo cáo tồn kho mousse</h1>
+          <p class="auth-subtitle">Đăng nhập bằng email công ty để xem số liệu kho.</p>
+
+          <form class="auth-form" id="auth-form" novalidate>
+            <label class="auth-field">
+              <span>Email công ty</span>
+              <input id="auth-email" type="email" name="email" autocomplete="username"
+                     inputmode="email" required placeholder="ten.ban@havas.vn" />
+            </label>
+
+            <label class="auth-field">
+              <span>Mật khẩu</span>
+              <span class="auth-password-wrap">
+                <input id="auth-password" type="password" name="password"
+                       autocomplete="current-password" required placeholder="Nhập mật khẩu" />
+                <button class="auth-reveal" id="auth-reveal" type="button" aria-label="Hiện mật khẩu">
+                  <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="2.6" /></svg>
+                </button>
+              </span>
+            </label>
+
+            <p class="auth-error" id="auth-error" role="alert" hidden></p>
+            <button class="auth-submit" id="auth-submit" type="submit">Đăng nhập</button>
+          </form>
+
+          <p class="auth-help">Chưa có tài khoản? Báo cáo chỉ mở cho người được cấp quyền — liên hệ bộ phận IT để được thêm.</p>
+        </div>
+      </div>
+    </section>
+
     <a class="skip-link" href="#main-content">Chuyển đến nội dung chính</a>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
@@ -23,6 +100,10 @@
         <div class="sidebar-foot">
           <div class="data-health"><span class="status-dot"></span><span>Dữ liệu đã đồng bộ</span></div>
           <small id="sync-time">Đang tải dữ liệu…</small>
+          <div class="account-row">
+            <span class="account-email" id="auth-identity" title=""></span>
+            <button class="account-signout" id="auth-signout" type="button">Đăng xuất</button>
+          </div>
         </div>
       </aside>
 
@@ -45,6 +126,7 @@
         </header>
 
         <main id="main-content" tabindex="-1">
+          <p class="stale-banner" id="stale-banner" role="status" hidden></p>
           <section class="page-heading">
             <div>
               <p class="eyebrow" id="page-kicker">Tổng quan điều hành</p>
@@ -101,6 +183,8 @@
       </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="config.js"></script>
     <script src="app.js" defer></script>
+    <script src="auth.js" type="module"></script>
   </body>
 </html>

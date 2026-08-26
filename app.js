@@ -20,6 +20,12 @@ const pageConfig = {
     description: "Đi từ bức tranh tổng quan đến từng barcode, cùng phân công người phụ trách và theo dõi thời hạn.",
     kicker: "Bắt đầu tại đây",
   },
+  architecture: {
+    label: "Cách app hoạt động",
+    title: "Dữ liệu đi từ ERP tới màn hình này bằng cách nào",
+    description: "Tài liệu kỹ thuật cho bộ phận IT: hạ tầng, đường kết nối, lịch đồng bộ và cách xử lý sự cố.",
+    kicker: "Kiến trúc hệ thống",
+  },
   overview: {
     label: "Tổng quan",
     title: "Tồn kho mousse dưới góc nhìn điều hành",
@@ -88,6 +94,7 @@ const ageColors = {
 
 const icons = {
   guide: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M8 20a3 3 0 010-6h11M9 8h6"/></svg>',
+  architecture: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="6" rx="1"/><rect x="14" y="4" width="7" height="6" rx="1"/><rect x="8.5" y="15" width="7" height="6" rx="1"/><path d="M6.5 10v2.5h11V10M12 12.5V15"/></svg>',
   overview: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
   warehouse: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 9l9-5 9 5v11H3zM3 9h18M8 20v-6h8v6"/></svg>',
   product: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg>',
@@ -124,6 +131,7 @@ const els = {
   sidebar: document.getElementById("sidebar"),
   scrim: document.getElementById("mobile-scrim"),
   toast: document.getElementById("toast"),
+  staleBanner: document.getElementById("stale-banner"),
   modal: document.getElementById("product-modal"),
   modalBody: document.getElementById("product-modal-body"),
   modalTitle: document.getElementById("product-modal-title"),
@@ -862,6 +870,252 @@ function barChart(items, valueFormatter = value => formatMetric(value, "volume")
       </button>`).join("")}</div>`;
 }
 
+// ==========================================================================
+// TRANG "CÁCH APP HOẠT ĐỘNG" — tài liệu kỹ thuật cho bộ phận IT
+// Mô tả toàn bộ chuỗi từ SQL Server tới màn hình, kèm lịch đồng bộ.
+// ==========================================================================
+
+const ARCH = {
+  sql: { host: "115.75.10.155", port: "1433", db: "B7R2_Havas_NB_2015", may: "HAVAS",
+         ban: "SQL Server 2019 Standard Edition (64-bit)",
+         proc: "usp_Vcd_TongHopNhapXuatMousseBlockData" },
+  supabase: { ref: "sgsrtpsvhnyjdmlevskr", vung: "Singapore · ap-southeast-1",
+              url: "https://sgsrtpsvhnyjdmlevskr.supabase.co" },
+  lich: { chuKy: "30 phút", gio: "07:00 – 18:00 các ngày làm việc", moiLuot: "≈ 37 giây", canhBao: 26 },
+};
+
+function archDiagram() {
+  return `<div class="arch-figure"><svg viewBox="0 0 880 250" role="img"
+      aria-label="Sơ đồ bốn tầng: SQL Server trong mạng công ty, script đồng bộ chạy trên GitHub Actions, Supabase tại Singapore, và app tĩnh trên GitHub Pages.">
+    <defs>
+      <marker id="arch-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#b22536"/>
+      </marker>
+    </defs>
+
+    <text x="14" y="20" class="arch-lane">TẦNG 1 · NGUỒN</text>
+    <text x="238" y="20" class="arch-lane">TẦNG 2 · ĐỒNG BỘ</text>
+    <text x="470" y="20" class="arch-lane">TẦNG 3 · LƯU TRỮ</text>
+    <text x="722" y="20" class="arch-lane">TẦNG 4 · HIỂN THỊ</text>
+
+    <rect x="14" y="46" width="190" height="104" rx="4" class="arch-box"/>
+    <text x="109" y="76" text-anchor="middle" class="arch-t1">SQL Server 2019</text>
+    <text x="109" y="97" text-anchor="middle" class="arch-t2">máy HAVAS · nội bộ</text>
+    <text x="109" y="115" text-anchor="middle" class="arch-mono">115.75.10.155:1433</text>
+    <text x="109" y="133" text-anchor="middle" class="arch-mono">B7R2_Havas_NB_2015</text>
+
+    <rect x="238" y="46" width="190" height="104" rx="4" class="arch-box arch-box-accent"/>
+    <text x="333" y="76" text-anchor="middle" class="arch-t1">sync.py</text>
+    <text x="333" y="97" text-anchor="middle" class="arch-t2">GitHub Actions</text>
+    <text x="333" y="115" text-anchor="middle" class="arch-mono">cron 30 phút/lượt</text>
+    <text x="333" y="133" text-anchor="middle" class="arch-t2">≈ 37 giây rồi tắt</text>
+
+    <rect x="470" y="46" width="190" height="104" rx="4" class="arch-box"/>
+    <text x="565" y="72" text-anchor="middle" class="arch-t1">Supabase</text>
+    <text x="565" y="90" text-anchor="middle" class="arch-t2">Singapore · ap-southeast-1</text>
+    <text x="565" y="112" text-anchor="middle" class="arch-mono">Postgres · Auth · Realtime</text>
+    <text x="565" y="133" text-anchor="middle" class="arch-t2">4 bảng, RLS bật toàn bộ</text>
+
+    <rect x="694" y="46" width="172" height="104" rx="4" class="arch-box"/>
+    <text x="780" y="76" text-anchor="middle" class="arch-t1">App tĩnh</text>
+    <text x="780" y="97" text-anchor="middle" class="arch-t2">GitHub Pages</text>
+    <text x="780" y="115" text-anchor="middle" class="arch-mono">HTML · CSS · JS</text>
+    <text x="780" y="133" text-anchor="middle" class="arch-t2">không có máy chủ riêng</text>
+
+    <line x1="204" y1="98" x2="232" y2="98" class="arch-arrow" marker-end="url(#arch-ar)"/>
+    <text x="218" y="176" text-anchor="middle" class="arch-note">TDS 1433</text>
+    <text x="218" y="192" text-anchor="middle" class="arch-note">gọi stored proc</text>
+
+    <line x1="428" y1="98" x2="464" y2="98" class="arch-arrow" marker-end="url(#arch-ar)"/>
+    <text x="446" y="176" text-anchor="middle" class="arch-note">HTTPS</text>
+    <text x="446" y="192" text-anchor="middle" class="arch-note">secret key</text>
+
+    <line x1="660" y1="84" x2="688" y2="84" class="arch-arrow" marker-end="url(#arch-ar)"/>
+    <text x="674" y="176" text-anchor="middle" class="arch-note">WebSocket</text>
+    <text x="674" y="192" text-anchor="middle" class="arch-note">đẩy tức thì</text>
+    <line x1="688" y1="118" x2="660" y2="118" class="arch-arrow" marker-end="url(#arch-ar)"/>
+    <text x="674" y="212" text-anchor="middle" class="arch-note">đăng nhập + đọc</text>
+
+    <text x="14" y="238" class="arch-foot">Không có máy chủ ứng dụng, không có API riêng. Dữ liệu chỉ đi một chiều: từ ERP ra, không bao giờ ghi ngược vào ERP.</text>
+  </svg></div>`;
+}
+
+function archLayers() {
+  const layers = [
+    {
+      so: "1", ten: "Nguồn dữ liệu", noi: "Mạng nội bộ công ty",
+      dong: [
+        ["Máy chủ", ARCH.sql.may + " · " + ARCH.sql.ban],
+        ["Địa chỉ", ARCH.sql.host + ":" + ARCH.sql.port],
+        ["Database", ARCH.sql.db],
+        ["Stored procedure", ARCH.proc || ARCH.sql.proc],
+        ["Tham số truyền", "12 trong tổng số 19 — phần còn lại dùng giá trị mặc định"],
+        ["Chiều truy cập", "CHỈ ĐỌC. App không bao giờ ghi ngược vào ERP"],
+      ],
+    },
+    {
+      so: "2", ten: "Script đồng bộ", noi: "GitHub Actions (máy ảo, không phải máy công ty)",
+      dong: [
+        ["Tệp", "scripts/sync.py — Python 3, thư viện pymssql"],
+        ["Nhiệm vụ", "Đọc ERP, chuẩn hoá, đẩy lên Supabase, ghi nhật ký"],
+        ["Chuẩn hoá", "Tách màu từ đuôi tên SP · gộp trạng thái có dấu và không dấu · sinh sự kiện nhập-xuất"],
+        ["Mật khẩu", "Lấy từ GitHub Secrets. Không nằm trong mã nguồn"],
+        ["Thời lượng", ARCH.lich.moiLuot + " mỗi lượt, chạy xong là tắt"],
+      ],
+    },
+    {
+      so: "3", ten: "Lưu trữ", noi: "Supabase — Postgres quản lý sẵn",
+      dong: [
+        ["Vùng", ARCH.supabase.vung],
+        ["Địa chỉ", ARCH.supabase.url],
+        ["Bảng", "inventory · movements · snapshots · sync_runs"],
+        ["Phân quyền", "Row Level Security bật trên cả 4 bảng"],
+        ["Xác thực", "Email + mật khẩu, tài khoản do quản trị viên tạo. Tự đăng ký đã TẮT"],
+        ["Realtime", "Đẩy thay đổi xuống trình duyệt qua WebSocket"],
+      ],
+    },
+    {
+      so: "4", ten: "Hiển thị", noi: "GitHub Pages — trang tĩnh",
+      dong: [
+        ["Công nghệ", "HTML, CSS, JavaScript thuần. Không framework, không bước build"],
+        ["Repo", "Công khai — nhưng CHỈ chứa mã nguồn, không có một dòng dữ liệu nào"],
+        ["Biểu đồ", "SVG tự vẽ, không thư viện ngoài"],
+        ["Máy chủ ứng dụng", "Không có. Trình duyệt nói thẳng với Supabase"],
+      ],
+    },
+  ];
+
+  return `<div class="arch-layers">${layers.map(l => `
+    <article class="arch-layer">
+      <div class="arch-layer-head">
+        <span class="arch-layer-num">${l.so}</span>
+        <div><strong>${l.ten}</strong><span>${l.noi}</span></div>
+      </div>
+      <dl class="arch-dl">${l.dong.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+    </article>`).join("")}</div>`;
+}
+
+function archSyncTable() {
+  const buoc = [
+    ["01", "Lịch cron nổ, GitHub khởi động máy ảo sạch", "tức thì"],
+    ["02", "Ghi một dòng vào <code>sync_runs</code>, trạng thái <code>running</code>", "tức thì"],
+    ["03", "Kết nối SQL Server, gọi stored procedure với ngày chốt là hôm nay", "≈ 0,7 giây"],
+    ["04", "Nhận khoảng 3.200 dòng thô", "4 – 150 giây"],
+    ["05", "Lọc còn các dòng tồn dương, chuẩn hoá, sinh sự kiện nhập-xuất", "dưới 1 giây"],
+    ["06", "Ghi lên Supabase", "≈ 5 giây"],
+    ["07", "Tính chỉ số ngày, ghi vào <code>snapshots</code>", "tức thì"],
+    ["08", "Đổi <code>sync_runs</code> thành <code>success</code> → mọi màn hình đang mở tự đổi số", "tức thì"],
+  ];
+  return `
+    <div class="arch-schedule">
+      <div><span>Chu kỳ</span><strong>${ARCH.lich.chuKy}</strong><em>một lượt</em></div>
+      <div><span>Khung giờ</span><strong>07:00 – 18:00</strong><em>ngày làm việc</em></div>
+      <div><span>Mỗi lượt mất</span><strong>${ARCH.lich.moiLuot}</strong><em>rồi tự tắt</em></div>
+      <div><span>Cảnh báo cũ</span><strong>${ARCH.lich.canhBao} giờ</strong><em>hiện băng đỏ</em></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Bước</th><th>Việc</th><th>Thời gian</th></tr></thead><tbody>
+      ${buoc.map(([n, v, t]) => `<tr${n === "08" ? ' class="arch-row-key"' : ""}><td class="arch-step-num">${n}</td><td>${v}</td><td class="numeric">${t}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="arch-callout">
+      <strong>Vì sao màn hình tự đổi số ở bước 08</strong>
+      <p>Supabase Realtime bám vào bảng <code>sync_runs</code> chứ không phải <code>inventory</code>. Mỗi lượt đồng bộ vì thế chỉ sinh <strong>một</strong> tín hiệu thay vì hàng trăm tín hiệu rời rạc, nên app chỉ nạp lại đúng một lần.</p>
+    </div>`;
+}
+
+function archWriteTable() {
+  const bang = [
+    ["inventory", "298 dòng mỗi ngày", "Xoá đúng ngày hôm nay rồi chèn lại", "Mỗi ngày là một ảnh chụp riêng. Ngày cũ giữ nguyên — đây là lịch sử để so sánh kỳ."],
+    ["movements", "≈ 5.700 dòng", "Xoá sạch rồi ghi mới toàn bộ", "Mỗi lượt chạy đã trả về toàn bộ lịch sử nhập-xuất, giữ nhiều bản chỉ là chép lại cùng dữ liệu."],
+    ["snapshots", "1 dòng mỗi ngày", "Ghi đè theo ngày", "Chạy lại trong ngày thì đè lên chính nó. Một ngày đúng một dòng."],
+    ["sync_runs", "1 dòng mỗi lượt", "Chỉ thêm, không xoá", "Nhật ký vận hành: lượt nào thành công, lượt nào lỗi và lỗi gì."],
+  ];
+  return `<div class="table-wrap"><table><thead><tr><th>Bảng</th><th>Quy mô</th><th>Cách ghi mỗi lượt</th><th>Lý do</th></tr></thead><tbody>
+      ${bang.map(([a, b, c, d]) => `<tr><td><strong class="arch-code">${a}</strong></td><td>${b}</td><td>${c}</td><td>${d}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="arch-callout">
+      <strong>Chạy lại bao nhiêu lần cũng an toàn</strong>
+      <p>Mọi bảng đều theo nguyên tắc xoá rồi ghi lại, không cộng dồn. Lỡ lịch rồi chạy bù, hay bấm chạy tay giữa ngày, đều không bao giờ nhân đôi số liệu.</p>
+    </div>`;
+}
+
+function archSecurity() {
+  const quyen = [
+    ["Người chưa đăng nhập", "Không thấy gì", "Màn hình đăng nhập. API trả về HTTP 401 trên cả 4 bảng", "chan"],
+    ["Người đã đăng nhập", "Đọc toàn bộ báo cáo", "Tài khoản do quản trị viên tạo. Tự đăng ký đã tắt", "cho"],
+    ["sync.py", "Đọc và ghi", "Dùng secret key, chỉ chạy trên máy ảo GitHub Actions", "cho"],
+    ["Người xem repo GitHub", "Chỉ thấy mã nguồn", "Repo công khai nhưng không chứa dòng dữ liệu nào", "chan"],
+  ];
+  const khoa = [
+    ["Publishable key", "Nằm công khai trong <code>config.js</code>", "Được thiết kế để lộ. Không mở được gì nếu chưa đăng nhập — RLS mới là lớp chặn thật", "cho"],
+    ["Secret key", "GitHub Secrets", "Bỏ qua mọi phân quyền. Không bao giờ được đưa vào mã nguồn", "chan"],
+    ["Mật khẩu SQL Server", "GitHub Secrets", "Chỉ script đồng bộ dùng tới", "chan"],
+  ];
+  return `
+    <div class="table-wrap"><table><thead><tr><th>Ai</th><th>Thấy được gì</th><th>Cơ chế</th></tr></thead><tbody>
+      ${quyen.map(([a, b, c, t]) => `<tr><td><strong>${a}</strong></td><td><span class="arch-flag arch-${t}">${b}</span></td><td>${c}</td></tr>`).join("")}
+    </tbody></table></div>
+    <h4 class="arch-sub">Ba loại khoá — đừng nhầm lẫn</h4>
+    <div class="table-wrap"><table><thead><tr><th>Khoá</th><th>Cất ở đâu</th><th>Ghi chú</th></tr></thead><tbody>
+      ${khoa.map(([a, b, c, t]) => `<tr><td><strong class="arch-code">${a}</strong></td><td><span class="arch-flag arch-${t}">${b}</span></td><td>${c}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+function archTrouble() {
+  const ca = [
+    ["Băng đỏ báo dữ liệu cũ", "Quá " + ARCH.lich.canhBao + " giờ chưa có lượt đồng bộ thành công",
+     "Mở bảng <code>sync_runs</code> trên Supabase, xem dòng mới nhất. Cột <code>message</code> ghi nguyên văn lỗi."],
+    ["Đăng nhập báo sai mật khẩu", "Sai thông tin, hoặc tài khoản chưa được tạo",
+     "Kiểm tra trong Supabase → Authentication → Users. Tự đăng ký đang tắt nên tài khoản phải do quản trị viên thêm."],
+    ["Số liệu không đổi dù kho có biến động", "Lượt đồng bộ lỗi, hoặc ERP chưa ghi nhận phiếu",
+     "Đối chiếu <code>sync_runs.finished_at</code> với thời điểm phát sinh phiếu trong ERP."],
+    ["Đồng bộ chạy rất lâu", "Stored procedure biến động mạnh theo tải máy chủ — đã đo được từ 4 tới 152 giây",
+     "Bình thường. Timeout đặt 600 giây nên vẫn hoàn tất."],
+    ["Trang trắng, không tải được", "Mất kết nối tới Supabase",
+     "Kiểm tra trạng thái project trên Supabase. Gói miễn phí tự tạm dừng sau 7 ngày hoàn toàn không có hoạt động."],
+  ];
+  return `<div class="table-wrap"><table><thead><tr><th>Hiện tượng</th><th>Nguyên nhân thường gặp</th><th>Kiểm tra ở đâu</th></tr></thead><tbody>
+      ${ca.map(([a, b, c]) => `<tr><td><strong>${a}</strong></td><td>${b}</td><td>${c}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+function archSourceBanner() {
+  const run = state.data?.lastRun;
+  const dt = value => value ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(`${value}T00:00:00`)) : "—";
+  const dtFull = value => value ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
+  if (!run) {
+    return `<div class="arch-source"><div class="arch-source-main"><span class="arch-source-label">Nguồn dữ liệu</span>
+      <strong>Chưa ghi nhận lần đồng bộ nào</strong></div></div>`;
+  }
+  const gio = run.finished_at ? (Date.now() - new Date(run.finished_at).getTime()) / 3600000 : null;
+  const tuoi = gio == null ? "" : gio < 1 ? `${Math.round(gio * 60)} phút trước`
+    : gio < 24 ? `${Math.floor(gio)} giờ trước` : `${Math.floor(gio / 24)} ngày trước`;
+  return `<div class="arch-source">
+    <div class="arch-source-main">
+      <span class="arch-source-label">Dữ liệu hiện đang xem được kéo từ SQL Server</span>
+      <strong>Khoảng chứng từ ${dt(run.doc_date_from)} → ${dt(run.doc_date_to)}</strong>
+      <span class="arch-source-sub">Lấy về lúc <b>${dtFull(run.finished_at)}</b>${tuoi ? ` · ${tuoi}` : ""}</span>
+    </div>
+    <dl class="arch-source-stats">
+      <div><dt>Máy chủ nguồn</dt><dd class="arch-code">${ARCH.sql.host}:${ARCH.sql.port}</dd></div>
+      <div><dt>Database</dt><dd class="arch-code">${ARCH.sql.db}</dd></div>
+      <div><dt>Dòng thô nhận về</dt><dd>${run.source_rows ? formatNumber(run.source_rows, 0) : "—"}</dd></div>
+      <div><dt>Dòng tồn đã ghi</dt><dd>${run.rows_loaded ? formatNumber(run.rows_loaded, 0) : "—"}</dd></div>
+    </dl>
+  </div>`;
+}
+
+function architecturePage() {
+  return `
+    ${archSourceBanner()}
+    ${panel("Sơ đồ tổng thể", "Bốn tầng, dữ liệu đi một chiều từ trái sang phải", archDiagram(), "ERP → Dashboard")}
+    ${panel("Chi tiết từng tầng", "Địa chỉ, công nghệ và vai trò của mỗi thành phần", archLayers())}
+    ${panel("Lịch đồng bộ dữ liệu", "Một lượt tự động diễn ra thế nào và mất bao lâu", archSyncTable(), ARCH.lich.chuKy + " / lượt")}
+    ${panel("Cách ghi vào từng bảng", "Ba bảng dữ liệu dùng ba chiến lược khác nhau", archWriteTable())}
+    ${panel("Phân quyền và bảo mật", "Ai thấy được gì, và khoá nào cất ở đâu", archSecurity())}
+    ${panel("Khi có sự cố", "Tra nhanh trước khi báo lên", archTrouble())}
+  `;
+}
+
 function renderPage() {
   const config = pageConfig[state.page];
   els.pageTitle.textContent = config.title;
@@ -869,9 +1123,10 @@ function renderPage() {
   els.pageKicker.textContent = config.kicker;
   els.topTitle.textContent = config.label;
   els.scopeText.textContent = filtersScopeLabel();
-  els.filterBar.hidden = state.page === "guide";
+  els.filterBar.hidden = state.page === "guide" || state.page === "architecture";
   const pages = {
     guide: guidePage,
+    architecture: architecturePage,
     overview: overviewPage,
     warehouse: warehousePage,
     product: productPage,
@@ -1175,9 +1430,192 @@ function bindEvents() {
   });
 }
 
+// ==========================================================================
+// NGUỒN DỮ LIỆU: Supabase
+// App không còn đọc data/inventory.json. Dữ liệu lấy trực tiếp từ Supabase,
+// chỉ ra khỏi đó khi người dùng đã đăng nhập (RLS chặn vai trò anon).
+// ==========================================================================
+
+const WAREHOUSE_META = {
+  TP20: { label: "TP20", role: "Kho mousse tổng" },
+  TP24NEM: { label: "TP24NEM", role: "Kho mousse dành cho nệm" },
+};
+const warehouseMeta = code => WAREHOUSE_META[code] || { label: code, role: "Kho khác" };
+
+// Tuần ISO, giữ đúng định dạng "2026-W26" mà build_data.py từng sinh ra.
+function isoWeek(value) {
+  if (!value) return "";
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return "";
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  const start = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((t - start) / 86400000 + 1) / 7);
+  return `${t.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+// PostgREST trả tối đa 1000 dòng mỗi lần — bảng movements gần 6.000 dòng nên phải phân trang.
+async function fetchAll(table, columns, filters = {}) {
+  const PAGE = 1000;
+  const rows = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = window.supabase.from(table).select(columns).range(from, from + PAGE - 1);
+    for (const [column, value] of Object.entries(filters)) query = query.eq(column, value);
+    const { data, error } = await query;
+    if (error) throw new Error(`Không đọc được bảng ${table}: ${error.message}`);
+    rows.push(...data);
+    if (data.length < PAGE) return rows;
+  }
+}
+
+// Đổi tên cột snake_case của Postgres về camelCase mà phần còn lại của app đang dùng.
+function mapRecord(row, index) {
+  const meta = warehouseMeta(row.warehouse);
+  return {
+    id: index + 1,
+    sku: row.sku || "",
+    barcode: row.barcode || "",
+    rowId: row.row_id || "",
+    product: row.product || "",
+    productFull: row.product_full || "",
+    color: row.color || "",
+    warehouse: row.warehouse || "",
+    warehouseLabel: meta.label,
+    warehouseRole: meta.role,
+    location: row.location || "Chưa có vị trí",
+    status: row.status || "Chưa xác định",
+    statusSecondary: row.order_ref || "",   // mã đơn hàng / lệnh sản xuất
+    statusTertiary: row.defect || "",       // tình trạng lỗi / hư
+    specCode: row.spec_code || "",
+    specName: row.spec_name || "",
+    foamCode: row.foam_code || "",
+    thicknessCode: row.thickness_code || "",
+    docNoWo: row.doc_no_wo || "",
+    receiptVolume: Number(row.receipt_volume || 0),
+    receiptUnits: Number(row.receipt_units || 0),
+    deliveryVolume: Number(row.delivery_volume || 0),
+    deliveryUnits: Number(row.delivery_units || 0),
+    closeVolume: Number(row.close_volume || 0),
+    closeUnits: Number(row.close_units || 0),
+    unit: row.unit || "tấm",
+    receiptDate: row.receipt_date || "",
+    deliveryDate: row.delivery_date || "",
+    receiptWeek: isoWeek(row.receipt_date),
+    deliveryWeek: isoWeek(row.delivery_date),
+    receiptMonth: (row.receipt_date || "").slice(0, 7),
+    deliveryMonth: (row.delivery_date || "").slice(0, 7),
+    receiptNo: row.receipt_no || "",
+    deliveryNo: row.delivery_no || "",
+    daysInStock: row.days_in_stock,
+    ageBucket: row.age_bucket || "Thiếu ngày nhập",
+  };
+}
+
+function mapMovement(row) {
+  return {
+    type: row.event_type,
+    date: row.event_date,
+    week: isoWeek(row.event_date),
+    month: (row.event_date || "").slice(0, 7),
+    warehouse: row.warehouse || "",
+    product: row.product || "",
+    color: row.color || "",
+    status: row.status || "",
+    units: Number(row.units || 0),
+    volume: Number(row.volume || 0),
+  };
+}
+
+async function loadFromSupabase() {
+  const { data: snapshots, error } = await window.supabase
+    .from("snapshots").select("*").order("report_date", { ascending: false }).limit(1);
+  if (error) throw new Error(`Không đọc được snapshots: ${error.message}`);
+  if (!snapshots.length) throw new Error("Chưa có dữ liệu nào trong Supabase. Cần chạy scripts/sync.py trước.");
+
+  const snapshot = snapshots[0];
+  const reportDate = snapshot.report_date;
+
+  const [inventoryRows, movementRows, runRows] = await Promise.all([
+    fetchAll("inventory", "*", { report_date: reportDate }),
+    fetchAll("movements", "*", { report_date: reportDate }),
+    window.supabase.from("sync_runs").select("*")
+      .eq("status", "success").order("finished_at", { ascending: false }).limit(1)
+      .then(r => r.data || []),
+  ]);
+
+  const records = inventoryRows.map(mapRecord);
+  const movements = movementRows.map(mapMovement);
+
+  // App cũ dùng rawRecords chỉ để liệt kê kho — kể cả kho hiện không còn tồn dương.
+  // Dựng lại danh sách đó từ movements để giữ nguyên hành vi trang "Theo kho".
+  const warehouses = [...new Set([...records, ...movements].map(r => r.warehouse).filter(Boolean))];
+  const rawRecords = warehouses.map(code => ({ warehouse: code, ...warehouseMeta(code) }));
+
+  return {
+    meta: { reportDate, source: "Supabase", generatedAt: runRows[0]?.finished_at || null },
+    snapshot,
+    lastRun: runRows[0] || null,
+    records,
+    rawRecords,
+    movements,
+  };
+}
+
+// Hiện rõ dữ liệu tươi tới đâu, và cảnh báo khi đã quá cũ.
+const STALE_HOURS = 26;
+function renderFreshness() {
+  const finished = state.data?.lastRun?.finished_at;
+  if (!finished) {
+    els.syncTime.textContent = "Chưa ghi nhận lần đồng bộ nào";
+    return;
+  }
+  const when = new Date(finished);
+  const hours = (Date.now() - when.getTime()) / 3600000;
+  const stamp = new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(when);
+  const run = state.data?.lastRun;
+  const khoang = run?.doc_date_from && run?.doc_date_to
+    ? ` · dữ liệu ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(`${run.doc_date_from}T00:00:00`))}–${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short" }).format(new Date(`${run.doc_date_to}T00:00:00`))}`
+    : "";
+  els.syncTime.textContent = `Cập nhật ${stamp}${khoang}`;
+
+  const stale = hours > STALE_HOURS;
+  document.querySelector(".data-health")?.classList.toggle("is-stale", stale);
+  if (els.staleBanner) {
+    els.staleBanner.hidden = !stale;
+    if (stale) {
+      els.staleBanner.textContent =
+        `Dữ liệu chưa được cập nhật ${Math.floor(hours)} giờ. Số liệu bên dưới là của lần đồng bộ lúc ${stamp}.`;
+    }
+  }
+}
+
+// Khi sync.py chạy xong, Supabase đẩy sự kiện xuống — app tự nạp lại, không cần bấm F5.
+// Bám vào sync_runs thay vì inventory: mỗi lượt đồng bộ chỉ sinh 1 sự kiện thay vì hàng trăm.
+function subscribeRealtime() {
+  window.supabase
+    .channel("dong-bo-ton-kho")
+    .on("postgres_changes", { event: "*", schema: "public", table: "sync_runs" }, payload => {
+      if (payload.new?.status !== "success") return;
+      refreshData().then(() => toast("Đã có số liệu mới từ kho"));
+    })
+    .subscribe();
+}
+
+async function refreshData() {
+  state.data = await loadFromSupabase();
+  state.records = state.data.records;
+  state.rawRecords = state.data.rawRecords;
+  state.movements = state.data.movements;
+  state.reportDate = state.data.meta.reportDate || state.reportDate;
+  els.reportDate.value = state.reportDate;
+  renderFreshness();
+  populateFilters();
+  applyFilters();
+}
+
 async function init() {
-  const response = await fetch("data/inventory.json");
-  state.data = await response.json();
+  els.pageContent.innerHTML = '<div class="empty-state"><strong>Đang tải số liệu kho…</strong><span>Kết nối tới Supabase.</span></div>';
+  state.data = await loadFromSupabase();
   state.records = state.data.records;
   state.rawRecords = state.data.rawRecords;
   state.movements = state.data.movements;
@@ -1189,14 +1627,19 @@ async function init() {
   state.filtered = [...state.records];
   state.reportDate = state.data.meta.reportDate || state.reportDate;
   els.reportDate.value = state.reportDate;
-  els.syncTime.textContent = `Nguồn ${state.data.meta.source} · cập nhật ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(state.data.meta.generatedAt))}`;
+  renderFreshness();
   buildNav();
   populateFilters();
   renderPage();
   bindEvents();
+  subscribeRealtime();
 }
 
-init().catch(error => {
-  console.error(error);
-  els.pageContent.innerHTML = `<div class="empty-state"><strong>Không tải được dữ liệu</strong><span>${error.message}</span></div>`;
-});
+window.__startApp = () => {
+  init().catch(error => {
+    console.error(error);
+    els.pageContent.innerHTML = `<div class="empty-state"><strong>Không tải được dữ liệu</strong><span>${error.message}</span></div>`;
+  });
+};
+
+if (window.__authReady) window.__startApp();

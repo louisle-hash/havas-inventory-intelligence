@@ -1,6 +1,25 @@
+# --- Bí mật: TUYỆT ĐỐI không đưa lên GitHub ---
+.env
+.env.*
+!.env.example
+*.key
+secrets.json
+
+# --- Dữ liệu thật: repo là public nên không chứa dữ liệu kho ---
+*.csv
+*.xlsx
+*.xls
+data/*.json
+data/snapshots/
+
+# --- Rác hệ thống / công cụ ---
 .DS_Store
 .playwright-cli/
 *.log
 node_modules/
 dist/
 output/
+__pycache__/
+*.pyc
+.venv/
+venv/
