@@ -733,3 +733,10 @@ span.log-run { background: var(--warning-light); color: var(--warning); }
 .log-flat { color: var(--muted); }
 .log-ago { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .log-msg td { padding-top: 0; color: var(--danger); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; overflow-wrap: anywhere; }
+
+/* Ô tìm kiếm kích thước trong thanh bộ lọc */
+.filter-size input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+.filter-size input::placeholder { color: #a8adb4; font-size: 13px; }
+.filter-size input:hover { border-color: #c9ccd0; }
+.filter-size input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(178,37,54,.12); outline: none; }
+.size-cell { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }

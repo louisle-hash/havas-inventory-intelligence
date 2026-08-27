@@ -10,7 +10,7 @@ const state = {
   movementMetric: "volume",
   tasks: [],
   selectedTaskBarcode: "",
-  filters: { warehouse: "all", product: "all", color: "all", age: "all", status: "all" },
+  filters: { warehouse: "all", product: "all", color: "all", age: "all", status: "all", size: "" },
 };
 
 const pageConfig = {
@@ -131,6 +131,7 @@ const els = {
   colorFilter: document.getElementById("color-filter"),
   ageFilter: document.getElementById("age-filter"),
   statusFilter: document.getElementById("status-filter"),
+  sizeFilter: document.getElementById("size-filter"),
   filterBar: document.getElementById("filter-bar"),
   clearFilters: document.getElementById("clear-filters"),
   exportButton: document.getElementById("export-button"),
@@ -199,12 +200,15 @@ function optionsMarkup(items, selected, labeler = value => value) {
 }
 
 function filtersScopeLabel() {
+  // Ô kích thước là bộ lọc tự do, không nằm trong danh sách dropdown bên dưới,
+  // nên phải nêu riêng — nếu không người dùng sẽ không hiểu vì sao bảng ít dòng.
   const scope = [];
   if (state.filters.warehouse !== "all") scope.push(state.filters.warehouse);
   if (state.filters.product !== "all") scope.push(state.filters.product);
   if (state.filters.color !== "all") scope.push(state.filters.color);
   if (state.filters.status !== "all") scope.push(state.filters.status);
   if (state.filters.age !== "all") scope.push(state.filters.age);
+  if (state.filters.size) scope.push(`kích thước ${state.filters.size}`);
   return scope.length ? scope.join(" · ") : "Toàn bộ tồn kho";
 }
 
@@ -593,11 +597,12 @@ function productTable(rows = state.filtered) {
 }
 
 function detailsTable(rows = state.filtered) {
-  return `<div class="table-wrap"><table><thead><tr><th>Block</th><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>Vị trí</th><th>Trạng thái</th><th>SL tồn</th><th>m3 tồn</th><th>Ngày nhập</th><th>Tuổi tồn</th><th>Phân công</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Block</th><th>Sản phẩm</th><th>Kích thước D×R×C (mm)</th><th>Màu</th><th>Kho</th><th>Vị trí</th><th>Trạng thái</th><th>SL tồn</th><th>m3 tồn</th><th>Ngày nhập</th><th>Tuổi tồn</th><th>Phân công</th></tr></thead><tbody>
     ${rows.map(row => `<tr>
       <td><div class="product-cell"><strong>${row.barcode || row.rowId}</strong><span>${row.rowId}</span></div></td>
-      <td>${row.product}</td>
-      <td>${row.color}</td>
+      <td>${escapeHtml(row.product)}</td>
+      <td class="numeric size-cell" data-sort-value="${row.lengthMm || 0}">${row.sizeLabel || "—"}</td>
+      <td>${escapeHtml(row.color)}</td>
       <td>${row.warehouse}</td>
       <td>${row.location}</td>
       <td><div class="product-cell"><strong>${row.status}</strong><span>${[row.statusSecondary, row.statusTertiary].filter(Boolean).join(" · ") || "Không có trạng thái phụ"}</span></div></td>
@@ -1343,6 +1348,27 @@ function populateFilters() {
   els.statusFilter.innerHTML = `<option value="all">Tất cả trạng thái</option>${optionsMarkup(statuses, state.filters.status)}`;
 }
 
+// Khớp kích thước theo cách người trong kho hay gõ:
+//   "2070"            -> bất kỳ chiều nào bằng 2070
+//   "1850x2070"       -> hai chiều đó cùng có mặt, không cần đúng thứ tự
+//   "1850x2070x550"   -> đúng cả ba chiều
+// Chấp nhận cả "x", "×", dấu cách, dấu phẩy làm dấu ngăn.
+function khopKichThuoc(row, tuKhoa) {
+  const so = tuKhoa.split(/[^0-9]+/).filter(Boolean).map(Number);
+  if (!so.length) return true;
+  const chieu = [row.lengthMm, row.widthMm, row.heightMm].filter(v => v != null);
+  if (!chieu.length) return false;
+  if (so.length === 1) return chieu.some(v => String(v).startsWith(String(so[0])));
+  // Nhiều số: mỗi số phải ăn một chiều riêng, không dùng lại chiều đã khớp.
+  const conLai = [...chieu];
+  return so.every(s => {
+    const i = conLai.indexOf(s);
+    if (i === -1) return false;
+    conLai.splice(i, 1);
+    return true;
+  });
+}
+
 function applyFilters() {
   state.filtered = state.records.filter(row => {
     if (state.filters.warehouse !== "all" && row.warehouse !== state.filters.warehouse) return false;
@@ -1350,6 +1376,7 @@ function applyFilters() {
     if (state.filters.color !== "all" && row.color !== state.filters.color) return false;
     if (state.filters.age !== "all" && row.ageBucket !== state.filters.age) return false;
     if (state.filters.status !== "all" && row.status !== state.filters.status) return false;
+    if (state.filters.size && !khopKichThuoc(row, state.filters.size)) return false;
     return true;
   });
   renderPage();
@@ -1367,7 +1394,7 @@ function toast(message) {
 }
 
 function exportCurrentCsv() {
-  const headers = ["barcode", "product", "productFull", "color", "warehouse", "location", "status", "statusSecondary", "statusTertiary", "closeUnits", "closeVolume", "receiptDate", "deliveryDate", "daysInStock"];
+  const headers = ["barcode", "product", "productFull", "color", "warehouse", "location", "status", "statusSecondary", "statusTertiary", "lengthMm", "widthMm", "heightMm", "closeUnits", "closeVolume", "receiptDate", "deliveryDate", "daysInStock"];
   const lines = [headers.join(",")].concat(state.filtered.map(row => headers.map(header => `"${String(row[header] ?? "").replaceAll('"', '""')}"`).join(",")));
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
@@ -1404,6 +1431,10 @@ function openAnalysis(rows, title, subtitle) {
   els.modalBody.innerHTML = `
     <div class="analysis-summary">
       <div><span>Block tồn</span><strong>${formatNumber(sum(rows, "closeUnits"), 0)}</strong></div>
+      <div><span>Kích thước</span><strong>${(() => {
+        const cỡ = unique(rows.map(r => r.sizeLabel).filter(Boolean));
+        return cỡ.length === 1 ? cỡ[0] : `${cỡ.length} loại`;
+      })()}</strong></div>
       <div><span>Dung tích</span><strong>${formatNumber(sum(rows, "closeVolume"), 1)} m³</strong></div>
       <div><span>Tuổi TB</span><strong>${formatNumber(weightedAge(rows), 0)} ngày</strong></div>
       <div class="analysis-risk ${rows.some(row => row.status === "Chưa xác định") ? "has-risk" : ""}"><span>Nội dung cùng trao đổi</span><strong>${dominant(rows, "status")}</strong></div>
@@ -1513,8 +1544,19 @@ function bindEvents() {
     });
   });
 
+  // Gõ tới đâu lọc tới đó, nhưng chờ 250ms để không vẽ lại bảng sau từng phím.
+  let hetGo;
+  els.sizeFilter?.addEventListener("input", () => {
+    clearTimeout(hetGo);
+    hetGo = setTimeout(() => {
+      state.filters.size = els.sizeFilter.value.trim();
+      applyFilters();
+    }, 250);
+  });
+
   els.clearFilters.addEventListener("click", () => {
-    state.filters = { warehouse: "all", product: "all", color: "all", age: "all", status: "all" };
+    state.filters = { warehouse: "all", product: "all", color: "all", age: "all", status: "all", size: "" };
+    els.sizeFilter.value = "";
     populateFilters();
     applyFilters();
   });
@@ -1692,6 +1734,12 @@ function mapRecord(row, index) {
     closeVolume: Number(row.close_volume || 0),
     closeUnits: Number(row.close_units || 0),
     unit: row.unit || "tấm",
+    lengthMm: row.length_mm,
+    widthMm: row.width_mm,
+    heightMm: row.height_mm,
+    // Chuỗi để hiển thị và để lọc: "1850×2070×550"
+    sizeLabel: [row.length_mm, row.width_mm, row.height_mm].every(Boolean)
+      ? `${row.length_mm}×${row.width_mm}×${row.height_mm}` : "",
     receiptDate: row.receipt_date || "",
     deliveryDate: row.delivery_date || "",
     receiptWeek: isoWeek(row.receipt_date),

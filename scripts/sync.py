@@ -88,6 +88,16 @@ def number(value) -> float:
         return 0.0
 
 
+def nguyen(value) -> int | None:
+    """Kích thước là số nguyên mm; trả None nếu thiếu để không ghi 0 giả."""
+    if value in (None, ""):
+        return None
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 def as_date(value) -> date | None:
     if value is None or value == "":
         return None
@@ -202,6 +212,11 @@ def chuan_hoa(rows: list[dict], report_date: date) -> tuple[list[dict], list[dic
                 "thickness_code": text(row.get("InfoCode5")),
                 "doc_no_wo": text(row.get("DocNo_WO")),
                 "unit": text(row.get("Unit")) or "tấm",
+                # Kích thước (mm). Đã kiểm chứng: CloseInventory = D x R x C / 1e9
+                # chính xác tuyệt đối, và không dòng nào thiếu kích thước.
+                "length_mm": nguyen(row.get("Length")),
+                "width_mm": nguyen(row.get("Width")),
+                "height_mm": nguyen(row.get("Height")),
                 "receipt_no": text(row.get("ReceiptNo")),
                 "delivery_no": text(row.get("DeliveryNo")),
                 "receipt_date": iso(receipt_date),

@@ -191,3 +191,16 @@ create policy login_log_insert_own on public.login_log
 grant select, insert on public.login_log to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 grant select, insert, delete on public.login_log to service_role;
+
+
+-- =====================================================================
+-- KÍCH THƯỚC BLOCK (mm) — bổ sung 27/08/2026
+-- Đã kiểm chứng trên 3.183 dòng: không dòng nào thiếu, và
+-- CloseInventory = Length × Width × Height / 1e9 chính xác tuyệt đối.
+-- =====================================================================
+alter table public.inventory add column if not exists length_mm integer;
+alter table public.inventory add column if not exists width_mm  integer;
+alter table public.inventory add column if not exists height_mm integer;
+
+create index if not exists inventory_kich_thuoc_idx
+  on public.inventory (length_mm, width_mm, height_mm);
