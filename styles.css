@@ -706,3 +706,30 @@ tr.arch-row-key td { font-weight: 500; }
 @media (max-width: 860px) {
   .arch-source { grid-template-columns: 1fr; gap: 18px; }
 }
+
+/* ==========================================================================
+   TRANG NHẬT KÝ
+   ========================================================================== */
+.log-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.log-person { padding: 13px 15px; border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: var(--radius-sm); background: var(--surface); }
+.log-person strong { display: block; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.log-person span { display: block; margin-top: 3px; color: var(--muted); font-size: 11.5px; }
+
+.log-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--border); overflow: hidden; }
+.log-summary > div { display: flex; flex-direction: column; gap: 2px; padding: 13px 15px; background: var(--surface); }
+.log-summary span { color: var(--muted); font-size: 11px; font-weight: 600; }
+.log-summary strong { color: var(--ink); font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+
+.log-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.log-ok { color: var(--success); }
+.log-fail { color: var(--danger); }
+span.log-ok { background: var(--success-light); }
+span.log-fail { background: var(--danger-light); }
+span.log-run { background: var(--warning-light); color: var(--warning); }
+
+.log-delta { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.log-up { background: var(--info-light); color: var(--info); }
+.log-down { background: var(--warning-light); color: var(--warning); }
+.log-flat { color: var(--muted); }
+.log-ago { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.log-msg td { padding-top: 0; color: var(--danger); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; overflow-wrap: anywhere; }

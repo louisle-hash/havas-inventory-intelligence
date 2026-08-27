@@ -42,7 +42,7 @@ Repo là **công khai**, nên mọi dữ liệu kho phải nằm trong Supabase,
 | SQL Server | `115.75.10.155:1433` · DB `B7R2_Havas_NB_2015` · máy `HAVAS` |
 | Stored procedure | `usp_Vcd_TongHopNhapXuatMousseBlockData` (19 tham số, truyền 12) |
 | Supabase | `https://sgsrtpsvhnyjdmlevskr.supabase.co` · Singapore |
-| Bảng dữ liệu | `inventory` · `movements` · `snapshots` · `sync_runs` |
+| Bảng dữ liệu | `inventory` · `movements` · `snapshots` · `sync_runs` · `login_log` · `cron_trigger_log` |
 
 Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt động"**.
 

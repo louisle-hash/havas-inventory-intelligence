@@ -155,3 +155,39 @@ select jobid, jobname, schedule, active from cron.job order by jobid;
 --    select id, status, rows_loaded, doc_date_from, doc_date_to, message,
 --           started_at, finished_at
 --    from public.sync_runs order by started_at desc limit 10;
+
+
+-- =====================================================================
+-- BẢNG NHẬT KÝ ĐĂNG NHẬP  (dùng cho màn hình "Nhật ký" trong app)
+--
+-- Supabase chỉ lưu MỐC ĐĂNG NHẬP GẦN NHẤT của mỗi người, và schema auth
+-- không đọc được qua API. Nên app tự ghi một dòng sau mỗi lần đăng nhập
+-- thành công (xem hàm ghiNhatKyDangNhap trong auth.js).
+--
+-- Đây là BẢNG KIỂM TOÁN nên phân quyền chặt hơn các bảng khác:
+--   authenticated : chỉ INSERT dòng của chính mình + SELECT toàn bộ
+--                   -> không sửa, không xoá được dấu vết của mình
+--   service_role  : thêm quyền DELETE để dọn dẹp (khoá này chỉ ở backend)
+-- =====================================================================
+
+create table if not exists public.login_log (
+  id           bigserial primary key,
+  user_id      uuid not null,
+  email        text not null,
+  signed_in_at timestamptz not null default now(),
+  user_agent   text
+);
+
+create index if not exists login_log_time_idx on public.login_log (signed_in_at desc);
+
+alter table public.login_log enable row level security;
+
+create policy login_log_read on public.login_log
+  for select to authenticated using (true);
+
+create policy login_log_insert_own on public.login_log
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+
+grant select, insert on public.login_log to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+grant select, insert, delete on public.login_log to service_role;

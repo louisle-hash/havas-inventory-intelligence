@@ -74,6 +74,12 @@ const pageConfig = {
     description: "Cùng theo dõi người phụ trách, thời hạn và tiến độ đến từng barcode mousse.",
     kicker: "Phối hợp công việc",
   },
+  logs: {
+    label: "Nhật ký",
+    title: "Nhật ký hoạt động của hệ thống",
+    description: "Ai đã vào app lúc nào, mỗi lượt đồng bộ chạy ra sao, và số liệu đổi thế nào qua từng ngày.",
+    kicker: "Theo dõi vận hành",
+  },
 };
 
 const statusColors = {
@@ -102,6 +108,7 @@ const icons = {
   status: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h8"/><circle cx="18" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>',
   actions: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4l8 4v8l-8 4-8-4V8z"/><path d="M9 12l2 2 4-4"/></svg>',
   workflow: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h7"/><path d="M16 12l1.5 1.5L20 11"/></svg>',
+  logs: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 012 2v14H8z"/><path d="M5 7v11a2 2 0 002 2M11 9h5M11 13h5M11 17h3"/></svg>',
   details: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>',
   blocks: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="6" rx="1"/><rect x="4" y="13" width="16" height="6" rx="1"/></svg>',
   volume: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg>',
@@ -1121,6 +1128,168 @@ function architecturePage() {
   `;
 }
 
+// ==========================================================================
+// TRANG "NHẬT KÝ" — ai vào app lúc nào, và số liệu đổi ra sao qua từng lượt
+// Dữ liệu nạp riêng khi mở trang, không tải cùng lúc với dashboard.
+// ==========================================================================
+
+const nhatKy = { dangTai: false, daTai: false, dangNhap: [], dongBo: [], theoNgay: [] };
+
+async function taiNhatKy() {
+  if (nhatKy.dangTai) return;
+  nhatKy.dangTai = true;
+  try {
+    const [dangNhap, dongBo, theoNgay] = await Promise.all([
+      window.supabase.from("login_log")
+        .select("*").order("signed_in_at", { ascending: false }).limit(100)
+        .then(r => r.data || []),
+      window.supabase.from("sync_runs")
+        .select("*").order("started_at", { ascending: false }).limit(60)
+        .then(r => r.data || []),
+      window.supabase.from("snapshots")
+        .select("*").order("report_date", { ascending: false }).limit(60)
+        .then(r => r.data || []),
+    ]);
+    Object.assign(nhatKy, { dangNhap, dongBo, theoNgay, daTai: true });
+  } finally {
+    nhatKy.dangTai = false;
+  }
+}
+
+const gioPhut = value => value
+  ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "medium" }).format(new Date(value))
+  : "—";
+
+// "3 phút trước", "2 giờ trước" — dễ đọc hơn mốc tuyệt đối khi vừa mới xảy ra.
+function baoLau(value) {
+  if (!value) return "";
+  const phut = (Date.now() - new Date(value).getTime()) / 60000;
+  if (phut < 1) return "vừa xong";
+  if (phut < 60) return `${Math.floor(phut)} phút trước`;
+  if (phut < 1440) return `${Math.floor(phut / 60)} giờ trước`;
+  return `${Math.floor(phut / 1440)} ngày trước`;
+}
+
+// Rút gọn User-Agent thành tên trình duyệt và máy, đủ để phân biệt thiết bị.
+function thietBi(ua) {
+  if (!ua) return "—";
+  const may = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad"
+    : /Android/.test(ua) ? "Android" : /Macintosh/.test(ua) ? "Mac"
+    : /Windows/.test(ua) ? "Windows" : "Khác";
+  const trinhDuyet = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera"
+    : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari"
+    : /Firefox\//.test(ua) ? "Firefox" : "";
+  return trinhDuyet ? `${trinhDuyet} · ${may}` : may;
+}
+
+function lech(moi, cu, donVi = "", soLe = 0) {
+  if (cu == null || moi == null) return "";
+  const d = Number(moi) - Number(cu);
+  if (Math.abs(d) < (soLe ? 0.05 : 0.5)) return `<span class="log-delta log-flat">không đổi</span>`;
+  const lop = d > 0 ? "log-up" : "log-down";
+  return `<span class="log-delta ${lop}">${d > 0 ? "+" : ""}${formatNumber(d, soLe)}${donVi}</span>`;
+}
+
+function logDangNhap() {
+  if (!nhatKy.dangNhap.length) {
+    return `<div class="empty-state"><strong>Chưa ghi nhận lượt đăng nhập nào</strong>
+      <span>Nhật ký bắt đầu tính từ lúc tính năng này được bật. Các lần đăng nhập trước đó không có trong đây.</span></div>`;
+  }
+  const theoNguoi = Object.entries(groupRows(nhatKy.dangNhap, r => r.email))
+    .map(([email, ds]) => ({ email, soLan: ds.length, ganNhat: ds[0].signed_in_at }))
+    .sort((a, b) => b.ganNhat.localeCompare(a.ganNhat));
+
+  return `<div class="log-people">${theoNguoi.map(n => `
+      <div class="log-person">
+        <strong>${escapeHtml(n.email)}</strong>
+        <span>${n.soLan} lượt · gần nhất ${baoLau(n.ganNhat)}</span>
+      </div>`).join("")}</div>
+    <div class="table-wrap"><table><thead><tr><th>Thời điểm</th><th>Người dùng</th><th>Thiết bị</th><th></th></tr></thead><tbody>
+      ${nhatKy.dangNhap.map(r => `<tr>
+        <td class="numeric" data-sort-value="${r.signed_in_at}">${gioPhut(r.signed_in_at)}</td>
+        <td>${escapeHtml(r.email)}</td>
+        <td>${escapeHtml(thietBi(r.user_agent))}</td>
+        <td class="log-ago">${baoLau(r.signed_in_at)}</td>
+      </tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+function logDongBo() {
+  if (!nhatKy.dongBo.length) {
+    return '<div class="empty-state"><strong>Chưa có lượt đồng bộ nào</strong><span>Chạy scripts/sync.py để bắt đầu.</span></div>';
+  }
+  const ok = nhatKy.dongBo.filter(r => r.status === "success").length;
+  const hong = nhatKy.dongBo.filter(r => r.status === "failed").length;
+
+  return `<div class="log-summary">
+      <div><span>Lượt gần đây</span><strong>${nhatKy.dongBo.length}</strong></div>
+      <div><span>Thành công</span><strong class="log-ok">${ok}</strong></div>
+      <div><span>Thất bại</span><strong class="${hong ? "log-fail" : ""}">${hong}</strong></div>
+      <div><span>Lượt mới nhất</span><strong>${baoLau(nhatKy.dongBo[0].finished_at || nhatKy.dongBo[0].started_at)}</strong></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Bắt đầu</th><th>Kết quả</th><th>Block tồn</th><th>Thay đổi</th>
+      <th>Dòng thô</th><th>Mất</th><th>Khoảng ngày kéo về</th></tr></thead><tbody>
+      ${nhatKy.dongBo.map((r, i) => {
+        const truoc = nhatKy.dongBo.slice(i + 1).find(x => x.status === "success" && x.rows_loaded != null);
+        const giay = r.finished_at && r.started_at
+          ? (new Date(r.finished_at) - new Date(r.started_at)) / 1000 : null;
+        const nhan = r.status === "success" ? "log-ok" : r.status === "failed" ? "log-fail" : "log-run";
+        return `<tr>
+          <td class="numeric" data-sort-value="${r.started_at}">${gioPhut(r.started_at)}</td>
+          <td><span class="log-badge ${nhan}">${r.status}</span></td>
+          <td class="numeric">${r.rows_loaded != null ? formatNumber(r.rows_loaded, 0) : "—"}</td>
+          <td class="numeric">${r.status === "success" ? lech(r.rows_loaded, truoc?.rows_loaded) : ""}</td>
+          <td class="numeric">${r.source_rows != null ? formatNumber(r.source_rows, 0) : "—"}</td>
+          <td class="numeric">${giay != null ? `${formatNumber(giay, 1)}s` : "—"}</td>
+          <td>${r.doc_date_from ? `${formatDate(r.doc_date_from)} → ${formatDate(r.doc_date_to)}` : "—"}</td>
+        </tr>${r.message && r.status === "failed"
+          ? `<tr class="log-msg"><td colspan="7">${escapeHtml(r.message)}</td></tr>` : ""}`;
+      }).join("")}
+    </tbody></table></div>`;
+}
+
+function logTheoNgay() {
+  if (nhatKy.theoNgay.length < 2) {
+    return `<div class="empty-state"><strong>Cần ít nhất 2 ngày dữ liệu</strong>
+      <span>Hiện mới có ${nhatKy.theoNgay.length} ngày. Mỗi ngày đồng bộ ghi thêm một dòng, vài ngày nữa bảng này sẽ có ý nghĩa.</span></div>`;
+  }
+  return `<div class="table-wrap"><table><thead><tr>
+      <th>Ngày</th><th>Block tồn</th><th>Δ block</th><th>Dung tích</th><th>Δ m³</th>
+      <th>Tuổi TB</th><th>SX dư</th><th>Hàng lỗi</th></tr></thead><tbody>
+      ${nhatKy.theoNgay.map((s, i) => {
+        const truoc = nhatKy.theoNgay[i + 1];
+        return `<tr>
+          <td class="numeric" data-sort-value="${s.report_date}">${formatDate(s.report_date)}</td>
+          <td class="numeric">${formatNumber(s.stock_rows, 0)}</td>
+          <td class="numeric">${lech(s.stock_rows, truoc?.stock_rows)}</td>
+          <td class="numeric">${formatNumber(s.total_volume, 1)} m³</td>
+          <td class="numeric">${lech(s.total_volume, truoc?.total_volume, " m³", 1)}</td>
+          <td class="numeric">${s.avg_age_days ?? "—"} ngày</td>
+          <td class="numeric">${formatNumber(s.volume_surplus, 1)} m³</td>
+          <td class="numeric">${s.defect_blocks ?? "—"}</td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div>`;
+}
+
+function logsPage() {
+  if (!nhatKy.daTai) {
+    // Nạp xong thì vẽ lại đúng trang này, tránh ghi đè nếu người dùng đã chuyển trang.
+    taiNhatKy().then(() => { if (state.page === "logs") renderPage(); })
+      .catch(error => {
+        console.error("Không tải được nhật ký:", error);
+        toast("Không tải được nhật ký. Kiểm tra mạng rồi thử lại.");
+      });
+    return '<div class="empty-state"><strong>Đang tải nhật ký…</strong><span>Đọc từ Supabase.</span></div>';
+  }
+  return `
+    ${panel("Ai đã vào app", "Ghi nhận mỗi lần đăng nhập thành công, kèm thiết bị", logDangNhap(), `${nhatKy.dangNhap.length} lượt gần nhất`, "table-panel")}
+    ${panel("Mỗi lượt đồng bộ chạy ra sao", "Kết quả từng lượt và mức thay đổi so với lượt thành công trước đó", logDongBo(), "", "table-panel")}
+    ${panel("Số liệu đổi thế nào qua từng ngày", "So sánh ảnh chụp cuối mỗi ngày", logTheoNgay(), `${nhatKy.theoNgay.length} ngày`, "table-panel")}
+  `;
+}
+
 function renderPage() {
   const config = pageConfig[state.page];
   els.pageTitle.textContent = config.title;
@@ -1128,7 +1297,7 @@ function renderPage() {
   els.pageKicker.textContent = config.kicker;
   els.topTitle.textContent = config.label;
   els.scopeText.textContent = filtersScopeLabel();
-  els.filterBar.hidden = state.page === "guide" || state.page === "architecture";
+  els.filterBar.hidden = ["guide", "architecture", "logs"].includes(state.page);
   const pages = {
     guide: guidePage,
     architecture: architecturePage,
@@ -1140,6 +1309,7 @@ function renderPage() {
     actions: actionsPage,
     details: detailsPage,
     workflow: workflowPage,
+    logs: logsPage,
   };
   els.pageContent.innerHTML = pages[state.page](state.filtered);
   els.pageContent.classList.add("page-enter");
