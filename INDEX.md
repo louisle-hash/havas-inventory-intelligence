@@ -3,20 +3,21 @@
 Dashboard tồn kho mousse block cho ban giám đốc. Dữ liệu kéo tự động từ SQL Server
 của ERP, lưu tại Supabase, hiển thị bằng trang tĩnh trên GitHub Pages.
 
-Cập nhật mục lục: 27/08/2026
+Cập nhật mục lục: 27/08/2026 (lần 2 — thêm phân quyền)
 
 ## File sống (đang chạy)
 
 | File | Vai trò |
 |---|---|
 | `index.html` | Khung app: màn hình đăng nhập + vỏ dashboard |
-| `app.js` | Toàn bộ logic dashboard, 10 màn hình, đọc dữ liệu từ Supabase |
+| `app.js` | Toàn bộ logic dashboard, 12 màn hình, đọc dữ liệu từ Supabase. Gồm cả phân quyền và việc giao |
 | `auth.js` | Đăng nhập/đăng xuất qua Supabase Auth, chặn app khi chưa đăng nhập |
 | `config.js` | URL + publishable key của Supabase (an toàn khi công khai) |
 | `styles.css` | Toàn bộ giao diện |
 | `scripts/sync.py` | **Đồng bộ SQL Server → Supabase.** Chạy: `.venv/bin/python scripts/sync.py` |
 | `scripts/build_data.py` | Đường cũ: CSV → JSON tĩnh. Giữ lại để đối chiếu, không còn dùng |
 | `scripts/cron-supabase.sql` | Bản sao lịch tự động đang chạy trong Supabase + cách tra khi nghi lịch hỏng |
+| `scripts/phan-quyen-supabase.sql` | **ĐÃ CHẠY 27/08/2026.** Dựng bảng `app_users` (vai trò + màn hình được xem) và bảng `tasks` (việc giao dùng chung), kèm RLS. Giữ lại để dựng lại khi cần; chạy lại nhiều lần vẫn an toàn |
 | `scripts/dat-secrets.py` | Đẩy cấu hình từ `.env` lên GitHub Secrets |
 | `.env.example` | Mẫu cấu hình. Sao chép thành `.env` rồi điền |
 | `Logo/` | Logo Havas |
@@ -42,7 +43,7 @@ Repo là **công khai**, nên mọi dữ liệu kho phải nằm trong Supabase,
 | SQL Server | `115.75.10.155:1433` · DB `B7R2_Havas_NB_2015` · máy `HAVAS` |
 | Stored procedure | `usp_Vcd_TongHopNhapXuatMousseBlockData` (19 tham số, truyền 12) |
 | Supabase | `https://sgsrtpsvhnyjdmlevskr.supabase.co` · Singapore |
-| Bảng dữ liệu | `inventory` · `movements` · `snapshots` · `sync_runs` · `login_log` · `cron_trigger_log` |
+| Bảng dữ liệu | `inventory` · `movements` · `snapshots` · `sync_runs` · `login_log` · `cron_trigger_log` · `app_users` · `tasks` |
 
 Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt động"**.
 
@@ -50,4 +51,7 @@ Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt 
 
 1. ~~Dựng lịch chạy tự động~~ — xong, Supabase pg_cron gọi ngược GitHub, xem `scripts/cron-supabase.sql`
 2. ~~Gỡ `data/inventory.json` khỏi git~~ — xong. Lịch sử git cũ vẫn còn dữ liệu tháng 7 (quyết định giữ nguyên)
-3. Chia lại dải tuổi tồn cho khớp nhịp kho thật (xem `knowledge/LESSONS.md`)
+3. ~~Chia lại dải tuổi tồn~~ — **đã bỏ**, lý do trong `knowledge/BAN-GIAO.md` mục 7
+4. ~~Chạy `scripts/phan-quyen-supabase.sql` trên Supabase~~ — xong 27/08/2026, đã nghiệm
+   thu RLS, bảng kết quả ở `knowledge/BAN-GIAO.md` mục 7
+5. Cấp thêm màn hình quản trị cho ai cần — làm ngay trong app, màn hình **Cấu hình tài khoản**

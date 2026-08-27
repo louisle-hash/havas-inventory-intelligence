@@ -9,7 +9,12 @@ const state = {
   timeline: "week",
   movementMetric: "volume",
   tasks: [],
+  tasksError: null,
   selectedTaskBarcode: "",
+  // Hồ sơ phân quyền của chính người đang đăng nhập, đọc từ bảng app_users.
+  profile: null,
+  // Danh sách toàn bộ tài khoản — chỉ quản trị viên đọc được, nạp khi mở màn hình Cấu hình.
+  users: [],
   filters: { warehouse: "all", product: "all", color: "all", age: "all", status: "all", size: "" },
 };
 
@@ -80,6 +85,12 @@ const pageConfig = {
     description: "Ai đã vào app lúc nào, mỗi lượt đồng bộ chạy ra sao, và số liệu đổi thế nào qua từng ngày.",
     kicker: "Theo dõi vận hành",
   },
+  admin: {
+    label: "Cấu hình tài khoản",
+    title: "Ai được vào, được xem gì, được sửa gì",
+    description: "Đặt vai trò cho từng tài khoản và chọn những màn hình tài khoản đó được mở.",
+    kicker: "Quản trị hệ thống",
+  },
 };
 
 const statusColors = {
@@ -109,6 +120,7 @@ const icons = {
   actions: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4l8 4v8l-8 4-8-4V8z"/><path d="M9 12l2 2 4-4"/></svg>',
   workflow: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h7"/><path d="M16 12l1.5 1.5L20 11"/></svg>',
   logs: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 012 2v14H8z"/><path d="M5 7v11a2 2 0 002 2M11 9h5M11 13h5M11 17h3"/></svg>',
+  admin: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><circle cx="17.5" cy="14.5" r="2.2"/><path d="M17.5 10.6v1.4M17.5 17v1.4M21 14.5h-1.4M15.4 14.5H14"/></svg>',
   details: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>',
   blocks: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="6" rx="1"/><rect x="4" y="13" width="16" height="6" rx="1"/></svg>',
   volume: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg>',
@@ -160,6 +172,9 @@ const els = {
   taskCancel: document.getElementById("task-cancel"),
 };
 
+// Khoá localStorage của bản CŨ. App không còn ghi vào đây nữa — chỉ đọc một
+// lần lúc khởi động để đẩy nốt việc cũ lên Supabase rồi xoá hẳn.
+// Xem chuyenViecCuLenSupabase().
 const TASK_STORAGE_KEY = "havas-inventory-tasks-v1";
 
 const formatNumber = (value, digits = 0) =>
@@ -610,7 +625,9 @@ function detailsTable(rows = state.filtered) {
       <td class="numeric" data-sort-value="${row.closeVolume}">${formatNumber(row.closeVolume, 2)}</td>
       <td data-sort-value="${row.receiptDate}">${formatDate(row.receiptDate)}</td>
       <td class="numeric" data-sort-value="${row.daysInStock || 0}">${row.daysInStock ?? "—"}${row.daysInStock != null ? " ngày" : ""}</td>
-      <td><button class="assign-task-button" type="button" data-assign-barcode="${row.barcode || row.rowId}">${state.tasks.filter(task => task.barcode === (row.barcode || row.rowId) && task.status !== "Hoàn thành").length ? "Xem / phân công thêm" : "Phân công"}</button></td>
+      <td>${duocSuaViec()
+        ? `<button class="assign-task-button" type="button" data-assign-barcode="${row.barcode || row.rowId}">${state.tasks.filter(task => task.barcode === (row.barcode || row.rowId) && task.status !== "Hoàn thành").length ? "Xem / phân công thêm" : "Phân công"}</button>`
+        : `<span class="assign-locked">${state.tasks.filter(task => task.barcode === (row.barcode || row.rowId) && task.status !== "Hoàn thành").length ? "Đang có việc mở" : "—"}</span>`}</td>
     </tr>`).join("")}
   </tbody></table></div>`;
 }
@@ -816,6 +833,7 @@ function workflowPage() {
     .sort((a, b) => b.open - a.open);
   const workflow = statusOrder.map(status => ({ status, count: tasks.filter(task => task.status === status).length }));
   return `
+    ${bangCanhBaoViec()}
     <section class="kpi-grid task-kpis">
       ${kpiCard("Việc đang mở", open.length, `${unique(open.map(task => task.barcode)).length} barcode đang được theo dõi`, "flow", "brand")}
       ${kpiCard("Đã quá hạn", overdue.length, overdue.length ? "Nên cùng cập nhật người phụ trách và tiến độ" : "Không có việc quá hạn", "clock", "warning")}
@@ -826,26 +844,47 @@ function workflowPage() {
       ${panel("Bức tranh luồng việc", "Số nhiệm vụ đang nằm tại mỗi bước xử lý", `<div class="workflow-pipeline">${workflow.map((item, index) => `<div><span>${String(index + 1).padStart(2, "0")}</span><strong>${item.count}</strong><small>${item.status}</small></div>`).join("")}</div>`, `${tasks.length} nhiệm vụ`)}
       ${panel("Phân bổ công việc theo người phụ trách", "Hỗ trợ cân đối công việc và cùng cập nhật các nhiệm vụ đến hạn", assignees.length ? `<div class="assignee-load">${assignees.map(item => `<div><span><strong>${escapeHtml(item.name)}</strong><small>${item.total} nhiệm vụ</small></span><b>${item.open} đang mở</b><em class="${item.overdue ? "has-overdue" : ""}">${item.overdue} quá hạn</em></div>`).join("")}</div>` : '<div class="empty-state"><strong>Chưa có người phụ trách</strong><span>Có thể phân công từ bảng barcode để bắt đầu theo dõi.</span></div>')}
     </div>
-    ${panel("Danh sách nhiệm vụ theo barcode", "Có thể cập nhật tiến độ ngay trong bảng; dữ liệu đang lưu trên trình duyệt này", taskTable(tasks), `${open.length} việc đang mở`, "table-panel")}
+    ${panel("Danh sách nhiệm vụ theo barcode", "Cập nhật tiến độ ngay trong bảng. Việc lưu trên Supabase — mọi người đăng nhập đều thấy cùng danh sách này", taskTable(tasks), `${open.length} việc đang mở`, "table-panel")}
   `;
 }
 
+// Bảng tasks chưa tồn tại, hoặc RLS chặn — nói thẳng nguyên nhân và cách sửa,
+// thay vì để màn hình trống khiến người dùng tưởng chưa ai giao việc.
+function bangCanhBaoViec() {
+  if (!state.tasksError) return "";
+  const chuaCoBang = /relation .*tasks.* does not exist|schema cache/i.test(state.tasksError);
+  return `<p class="setup-banner" role="status">${chuaCoBang
+    ? "Chưa dựng bảng công việc trên Supabase. Mở Supabase &gt; SQL Editor, dán toàn bộ <code>scripts/phan-quyen-supabase.sql</code> rồi bấm Run."
+    : `Chưa đọc được danh sách công việc: ${escapeHtml(state.tasksError)}`}</p>`;
+}
+
 function taskTable(tasks) {
-  if (!tasks.length) return '<div class="empty-state"><strong>Chưa có nhiệm vụ</strong><span>Mở một sản phẩm hoặc bảng chi tiết block và chọn “Phân công”.</span></div>';
-  return `<div class="table-wrap"><table><thead><tr><th>Barcode / sản phẩm</th><th>Nhiệm vụ</th><th>Phụ trách</th><th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Tiến độ</th><th>Tình trạng hạn</th></tr></thead><tbody>
+  if (!tasks.length) {
+    return `<div class="empty-state"><strong>Chưa có nhiệm vụ</strong><span>${duocSuaViec()
+      ? "Mở một sản phẩm hoặc bảng chi tiết block và chọn “Phân công”."
+      : "Tài khoản của bạn chỉ được xem, chưa giao việc được. Liên hệ quản trị viên nếu cần quyền giao việc."}</span></div>`;
+  }
+  const suaDuoc = duocSuaViec();
+  return `<div class="table-wrap"><table><thead><tr><th>Barcode / sản phẩm</th><th>Nhiệm vụ</th><th>Phụ trách</th><th>Người giao</th><th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Tiến độ</th><th>Tình trạng hạn</th><th></th></tr></thead><tbody>
     ${tasks.map(task => {
       // Task cũ lưu theo barcode, task mới lưu rowId — tra rowId trước cho chính xác.
       const record = state.records.find(row => row.rowId === (task.rowId || task.barcode))
                   || state.records.find(row => (row.barcode || row.rowId) === task.barcode);
       const due = taskDueState(task);
       const dueLabel = due === "overdue" ? "Quá hạn" : due === "due-soon" ? "Sắp đến hạn" : due === "done" ? "Đã đóng" : "Đúng tiến độ";
+      // Xoá được khi là quản trị viên, hoặc chính người đã giao việc đó — khớp
+      // đúng policy tasks_xoa trong scripts/phan-quyen-supabase.sql.
+      const xoaDuoc = laQuanTri() || (task.createdBy && task.createdBy === state.profile?.user_id);
       return `<tr>
         <td><div class="product-cell"><strong>${escapeHtml(task.barcode)}</strong><span>${record ? `${escapeHtml(record.productFull)} · ${escapeHtml(record.warehouse)}` : "Barcode ngoài tồn hiện tại"}</span></div></td>
         <td><div class="product-cell"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.note) || "Không có ghi chú"}</span></div></td>
-        <td>${escapeHtml(task.assignee)}</td><td>${formatDate(task.startDate)}</td><td>${formatDate(task.deadline)}</td>
+        <td>${escapeHtml(task.assignee)}</td>
+        <td><div class="product-cell"><strong>${escapeHtml(task.createdByEmail || "—")}</strong><span>${task.updatedByEmail && task.updatedByEmail !== task.createdByEmail ? `sửa gần nhất: ${escapeHtml(task.updatedByEmail)}` : task.createdAt ? formatDate(task.createdAt) : ""}</span></div></td>
+        <td>${formatDate(task.startDate)}</td><td>${formatDate(task.deadline)}</td>
         <td><span class="task-priority priority-${task.priority === "Khẩn cấp" ? "urgent" : task.priority === "Cao" ? "high" : "normal"}">${task.priority}</span></td>
-        <td><select class="task-status-select" data-task-status-id="${task.id}">${["Chưa bắt đầu", "Đang xử lý", "Chờ xác nhận", "Hoàn thành"].map(status => `<option ${status === task.status ? "selected" : ""}>${status}</option>`).join("")}</select></td>
+        <td><select class="task-status-select" data-task-status-id="${escapeAttr(task.id)}" ${suaDuoc ? "" : "disabled"}>${["Chưa bắt đầu", "Đang xử lý", "Chờ xác nhận", "Hoàn thành"].map(status => `<option ${status === task.status ? "selected" : ""}>${status}</option>`).join("")}</select></td>
         <td><span class="due-state due-${due}">${dueLabel}</span></td>
+        <td>${xoaDuoc ? `<button class="task-delete" type="button" data-delete-task="${escapeAttr(task.id)}" aria-label="Xoá nhiệm vụ">Xoá</button>` : ""}</td>
       </tr>`;
     }).join("")}
   </tbody></table></div>`;
@@ -1295,14 +1334,26 @@ function logsPage() {
   `;
 }
 
+// Chưa chạy phan-quyen-supabase.sql thì ba màn hình quản trị bị khoá với MỌI
+// người, kể cả người dựng hệ thống. Không nói ra thì người dùng chỉ thấy các
+// mục quen thuộc tự nhiên biến mất khỏi thanh bên và không hiểu vì sao.
+function bangChuaPhanQuyen() {
+  if (!state.profile?.chuaCoHoSo) return "";
+  return `<p class="setup-banner" role="status">Chưa dựng bảng phân quyền trên Supabase, nên ba màn hình quản trị (Cách app hoạt động · Nhật ký · Cấu hình tài khoản) đang tạm khoá với mọi người. Mở Supabase &gt; SQL Editor, dán toàn bộ <code>scripts/phan-quyen-supabase.sql</code> rồi bấm Run.</p>`;
+}
+
 function renderPage() {
+  // Chặn ở đây chứ không chỉ ở thanh điều hướng: người dùng vẫn có thể tới
+  // một trang bị thu quyền do quyền vừa đổi giữa chừng, hoặc do trang đang mở
+  // sẵn từ trước. Rơi về Hướng dẫn thay vì để màn hình trắng.
+  if (!trangDuocXem(state.page)) state.page = "guide";
   const config = pageConfig[state.page];
   els.pageTitle.textContent = config.title;
   els.pageDescription.textContent = config.description;
   els.pageKicker.textContent = config.kicker;
   els.topTitle.textContent = config.label;
   els.scopeText.textContent = filtersScopeLabel();
-  els.filterBar.hidden = ["guide", "architecture", "logs"].includes(state.page);
+  els.filterBar.hidden = ["guide", "architecture", "logs", "admin"].includes(state.page);
   const pages = {
     guide: guidePage,
     architecture: architecturePage,
@@ -1315,8 +1366,9 @@ function renderPage() {
     details: detailsPage,
     workflow: workflowPage,
     logs: logsPage,
+    admin: adminPage,
   };
-  els.pageContent.innerHTML = pages[state.page](state.filtered);
+  els.pageContent.innerHTML = bangChuaPhanQuyen() + pages[state.page](state.filtered);
   els.pageContent.classList.add("page-enter");
   enhanceSortableTables(els.pageContent);
 }
@@ -1383,7 +1435,10 @@ function applyFilters() {
 }
 
 function buildNav() {
-  els.nav.innerHTML = Object.entries(pageConfig).map(([key, config]) => `<button class="nav-button ${state.page === key ? "active" : ""}" data-page="${key}"><span class="nav-icon">${icons[key]}</span><span>${config.label}</span></button>`).join("");
+  els.nav.innerHTML = Object.entries(pageConfig)
+    .filter(([key]) => trangDuocXem(key))
+    .map(([key, config]) => `<button class="nav-button ${state.page === key ? "active" : ""}" data-page="${key}"><span class="nav-icon">${icons[key]}</span><span>${config.label}</span></button>`)
+    .join("");
 }
 
 function toast(message) {
@@ -1462,10 +1517,6 @@ function closeAnalysis() {
   }, 180);
 }
 
-function saveTasks() {
-  localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(state.tasks));
-}
-
 function openTaskModal(barcode) {
   // barcode KHÔNG duy nhất (2.076 mã cho 2.178 dòng) nên tra theo rowId trước.
   const record = state.records.find(row => row.rowId === barcode)
@@ -1499,25 +1550,391 @@ function closeTaskModal() {
   }, 180);
 }
 
-function createTask() {
-  state.tasks.push({
-    id: `TASK-${Date.now()}`,
+async function createTask() {
+  if (!duocSuaViec()) {
+    toast("Tài khoản của bạn chỉ được xem, chưa giao việc được");
+    return;
+  }
+  const nut = els.taskForm.querySelector(".task-submit");
+  nut.disabled = true;
+  nut.textContent = "Đang lưu…";
+
+  const user = await nguoiDangDangNhap();
+  const row = {
     barcode: els.taskBarcode.value,
-    // Lưu thêm rowId vì barcode không duy nhất; rowId mới là khoá tra chính xác.
-    rowId: state.selectedTaskBarcode,
+    // Lưu thêm row_id vì barcode không duy nhất; row_id mới là khoá tra chính xác.
+    row_id: state.selectedTaskBarcode,
     title: els.taskTitle.value.trim(),
     assignee: els.taskAssignee.value.trim(),
-    startDate: els.taskStartDate.value,
+    start_date: els.taskStartDate.value,
     deadline: els.taskDeadline.value,
     priority: els.taskPriority.value,
     status: els.taskStatus.value,
     note: els.taskNote.value.trim(),
-    createdAt: new Date().toISOString(),
-  });
-  saveTasks();
+    created_by: user?.id || null,
+    created_by_email: user?.email || null,
+  };
+  const { data, error } = await window.supabase.from("tasks").insert(row).select().single();
+
+  nut.disabled = false;
+  nut.textContent = "Phân công";
+
+  if (error) {
+    toast(`Chưa lưu được lên Supabase: ${error.message}`);
+    return;
+  }
+  state.tasks.push(mapTask(data));
   closeTaskModal();
   renderPage();
-  toast(`Đã phân công cho ${els.taskAssignee.value.trim()} theo barcode ${els.taskBarcode.value}`);
+  toast(`Đã giao cho ${row.assignee} theo barcode ${row.barcode} — mọi người đăng nhập đều thấy`);
+}
+
+async function xoaViec(id) {
+  const task = state.tasks.find(item => item.id === id);
+  if (!task) return;
+  if (!confirm(`Xoá nhiệm vụ "${task.title}" của barcode ${task.barcode}?\n\nMọi người sẽ không còn thấy nhiệm vụ này.`)) return;
+  const { error } = await window.supabase.from("tasks").delete().eq("id", id);
+  if (error) {
+    toast(`Chưa xoá được: ${error.message}`);
+    return;
+  }
+  state.tasks = state.tasks.filter(item => item.id !== id);
+  renderPage();
+  toast("Đã xoá nhiệm vụ");
+}
+
+// ==========================================================================
+// PHÂN QUYỀN — nguồn sự thật là bảng app_users trên Supabase
+//
+// ĐỌC KỸ TRƯỚC KHI SỬA: ẩn nút trong màn hình chỉ là dọn giao diện cho gọn,
+// KHÔNG phải hàng rào bảo mật. Thứ chặn thật là Row Level Security, cấu hình
+// trong scripts/phan-quyen-supabase.sql. Chín màn hình nghiệp vụ đều đọc chung
+// hai bảng inventory và movements, nên bỏ một màn hình khỏi allowed_pages chỉ
+// làm người đó không thấy lối vào — số liệu gốc vẫn nằm trong tầm tay ai biết
+// mở công cụ lập trình của trình duyệt.
+// Chỉ hai màn hình được chặn tới tận tầng dữ liệu vì đọc bảng riêng:
+//   'logs'  -> login_log     'admin' -> app_users
+// ==========================================================================
+
+const TRANG_QUAN_TRI = ["architecture", "logs", "admin"];
+
+const VAI_TRO = {
+  admin:  { nhan: "Quản trị", mo_ta: "Sửa được cấu hình tài khoản. Xem mọi màn hình, bất kể danh sách được cấp." },
+  member: { nhan: "Giao việc", mo_ta: "Giao việc và cập nhật tiến độ. Chỉ xem những màn hình được cấp." },
+  viewer: { nhan: "Chỉ xem", mo_ta: "Chỉ xem báo cáo. Không giao được việc, không sửa được tiến độ." },
+};
+
+const laQuanTri = () => state.profile?.role === "admin" && state.profile?.is_active !== false;
+const duocSuaViec = () => ["admin", "member"].includes(state.profile?.role) && state.profile?.is_active !== false;
+
+function trangDuocXem(key) {
+  // Hướng dẫn luôn mở: phải còn ít nhất một lối vào, nếu không người bị thu hết
+  // quyền sẽ nhìn thấy màn hình trắng và không hiểu chuyện gì đang xảy ra.
+  if (key === "guide") return true;
+  // Màn hình Cấu hình tài khoản đi theo VAI TRÒ, không theo ô tick. Nếu để nó
+  // nằm trong allowed_pages thì hạ một quản trị viên xuống member xong, ô đó
+  // vẫn còn tick — họ thấy mục ở thanh bên rồi bấm vào lại bị từ chối.
+  if (key === "admin") return laQuanTri();
+  if (laQuanTri()) return true;
+  const cap = state.profile?.allowed_pages;
+  // Chưa chạy phan-quyen-supabase.sql thì không có hồ sơ: giữ nguyên hành vi cũ
+  // cho chín màn hình nghiệp vụ, nhưng vẫn khoá ba màn hình quản trị.
+  if (!Array.isArray(cap)) return !TRANG_QUAN_TRI.includes(key);
+  return cap.includes(key);
+}
+
+async function nguoiDangDangNhap() {
+  const { data } = await window.supabase.auth.getUser();
+  return data?.user || null;
+}
+
+async function taiHoSo() {
+  const user = await nguoiDangDangNhap();
+  if (!user) return null;
+  const macDinh = {
+    user_id: user.id, email: user.email, full_name: null,
+    role: "member", allowed_pages: null, is_active: true, chuaCoHoSo: true,
+  };
+  const { data, error } = await window.supabase
+    .from("app_users").select("*").eq("user_id", user.id).maybeSingle();
+  if (error) {
+    console.warn("Chưa đọc được hồ sơ phân quyền:", error.message);
+    return macDinh;
+  }
+  return data || macDinh;
+}
+
+// ==========================================================================
+// VIỆC GIAO — từ 27/08/2026 nằm ở bảng tasks trên Supabase, không còn ở
+// localStorage. Ai đăng nhập cũng thấy cùng một danh sách.
+// ==========================================================================
+
+function mapTask(row) {
+  return {
+    id: row.id,
+    legacyId: row.legacy_id || "",
+    rowId: row.row_id || "",
+    barcode: row.barcode || "",
+    title: row.title || "",
+    assignee: row.assignee || "",
+    startDate: row.start_date || "",
+    deadline: row.deadline || "",
+    priority: row.priority || "Cao",
+    status: row.status || "Chưa bắt đầu",
+    note: row.note || "",
+    createdBy: row.created_by || null,
+    createdByEmail: row.created_by_email || "",
+    createdAt: row.created_at || null,
+    updatedByEmail: row.updated_by_email || "",
+    updatedAt: row.updated_at || null,
+  };
+}
+
+async function taiViec() {
+  const { data, error } = await window.supabase
+    .from("tasks").select("*").order("deadline", { ascending: true });
+  if (error) {
+    state.tasksError = error.message;
+    state.tasks = [];
+    return;
+  }
+  state.tasksError = null;
+  state.tasks = (data || []).map(mapTask);
+}
+
+// Việc cũ còn kẹt trong localStorage của riêng máy này: đẩy lên Supabase đúng
+// một lần rồi xoá hẳn khỏi trình duyệt. Cột legacy_id có ràng buộc unique nên
+// chạy lại, hoặc chạy từ máy khác cũng đang giữ bản sao, đều không sinh dòng trùng.
+async function chuyenViecCuLenSupabase() {
+  let cu = [];
+  try {
+    cu = JSON.parse(localStorage.getItem(TASK_STORAGE_KEY) || "[]");
+  } catch {
+    cu = [];
+  }
+  if (!Array.isArray(cu) || !cu.length) {
+    localStorage.removeItem(TASK_STORAGE_KEY);
+    return 0;
+  }
+  // Người chỉ-xem không có quyền chèn; giữ nguyên dữ liệu cũ để người có quyền
+  // đăng nhập trên máy này còn đẩy lên được, thay vì xoá mất.
+  if (!duocSuaViec()) return 0;
+
+  const hopLe = (giaTri, danhSach, mac) => (danhSach.includes(giaTri) ? giaTri : mac);
+  const homNay = new Date().toISOString().slice(0, 10);
+  const user = await nguoiDangDangNhap();
+  const rows = cu
+    .filter(t => t && t.id)
+    .map(t => ({
+      legacy_id: String(t.id).slice(0, 120),
+      row_id: t.rowId || t.barcode || null,
+      barcode: t.barcode || t.rowId || "—",
+      title: (t.title || "").trim() || "Việc chuyển từ bản cũ",
+      assignee: (t.assignee || "").trim(),
+      start_date: t.startDate || t.deadline || homNay,
+      deadline: t.deadline || t.startDate || homNay,
+      priority: hopLe(t.priority, ["Khẩn cấp", "Cao", "Trung bình", "Thấp"], "Cao"),
+      status: hopLe(t.status, ["Chưa bắt đầu", "Đang xử lý", "Chờ xác nhận", "Hoàn thành"], "Chưa bắt đầu"),
+      note: t.note || "",
+      created_by: user?.id || null,
+      created_by_email: user?.email || null,
+    }));
+
+  if (!rows.length) {
+    localStorage.removeItem(TASK_STORAGE_KEY);
+    return 0;
+  }
+  const { error } = await window.supabase
+    .from("tasks").upsert(rows, { onConflict: "legacy_id", ignoreDuplicates: true });
+  if (error) {
+    console.warn("Chưa chuyển được việc cũ lên Supabase:", error.message);
+    return 0;
+  }
+  localStorage.removeItem(TASK_STORAGE_KEY);
+  return rows.length;
+}
+
+// ==========================================================================
+// MÀN HÌNH "CẤU HÌNH TÀI KHOẢN" — chỉ quản trị viên
+// ==========================================================================
+
+const quanTri = { dangTai: false, daTai: false, loi: null, lanCuoi: {} };
+
+async function taiDanhSachTaiKhoan() {
+  if (quanTri.dangTai) return;
+  quanTri.dangTai = true;
+  try {
+    const [ds, dangNhap] = await Promise.all([
+      window.supabase.from("app_users").select("*").order("email"),
+      // Quản trị viên luôn đọc được login_log (hàm duoc_xem_trang trả true cho
+      // vai trò admin), nên lấy luôn mốc đăng nhập gần nhất của từng người.
+      window.supabase.from("login_log").select("email, signed_in_at")
+        .order("signed_in_at", { ascending: false }).limit(500)
+        .then(r => r.data || []),
+    ]);
+    quanTri.loi = ds.error ? ds.error.message : null;
+    state.users = ds.data || [];
+    quanTri.lanCuoi = {};
+    for (const d of dangNhap) {
+      if (!quanTri.lanCuoi[d.email]) quanTri.lanCuoi[d.email] = d.signed_in_at;
+    }
+  } finally {
+    quanTri.dangTai = false;
+    quanTri.daTai = true;
+  }
+}
+
+function theTrang(userId, key, config, daCap, khoa) {
+  const id = `cap-${userId}-${key}`;
+  return `<label class="page-chip ${khoa ? "is-locked" : ""}">
+    <input type="checkbox" id="${id}" data-page-key="${key}" ${daCap ? "checked" : ""} ${khoa ? "disabled" : ""} />
+    <span>${escapeHtml(config.label)}</span>
+  </label>`;
+}
+
+function theTaiKhoan(u) {
+  const laMinh = u.user_id === state.profile?.user_id;
+  const laAdmin = u.role === "admin";
+  const cap = Array.isArray(u.allowed_pages) ? u.allowed_pages : [];
+  const ganNhat = quanTri.lanCuoi[u.email];
+
+  return `<article class="account-card ${u.is_active ? "" : "is-off"}" data-user="${escapeAttr(u.user_id)}">
+    <header class="account-card-head">
+      <div class="account-who">
+        <strong>${escapeHtml(u.email)}${laMinh ? ' <em class="account-self">bạn</em>' : ""}</strong>
+        <span>${ganNhat ? `Đăng nhập gần nhất ${baoLau(ganNhat)}` : "Chưa từng đăng nhập"}</span>
+      </div>
+      <label class="account-toggle">
+        <input type="checkbox" data-field="is_active" ${u.is_active ? "checked" : ""} />
+        <span>Đang hoạt động</span>
+      </label>
+    </header>
+
+    <div class="account-fields">
+      <label><span>Tên hiển thị</span><input type="text" data-field="full_name" value="${escapeAttr(u.full_name || "")}" placeholder="Ví dụ: Nguyễn Văn Quang" /></label>
+      <label><span>Vai trò</span><select data-field="role">
+        ${Object.entries(VAI_TRO).map(([key, v]) => `<option value="${key}" ${key === u.role ? "selected" : ""}>${v.nhan}</option>`).join("")}
+      </select></label>
+    </div>
+    <p class="account-role-hint" data-role-hint>${escapeHtml(VAI_TRO[u.role]?.mo_ta || "")}</p>
+
+    <fieldset class="account-pages" ${laAdmin ? "disabled" : ""}>
+      <legend>Màn hình được xem${laAdmin ? " — quản trị viên xem được tất cả" : ""}</legend>
+      <p class="account-pages-note">Màn hình <strong>Cấu hình tài khoản</strong> không có trong danh sách này — nó đi theo vai trò Quản trị.</p>
+      <div class="page-chips">
+        ${Object.entries(pageConfig).filter(([key]) => key !== "admin").map(([key, config]) =>
+          theTrang(u.user_id, key, config, key === "guide" || laAdmin || cap.includes(key), key === "guide" || laAdmin)).join("")}
+      </div>
+    </fieldset>
+
+    <footer class="account-card-foot">
+      <span class="account-msg" data-msg></span>
+      <button class="task-submit" type="button" data-save-user="${escapeAttr(u.user_id)}">Lưu thay đổi</button>
+    </footer>
+  </article>`;
+}
+
+function adminPage() {
+  if (!laQuanTri()) {
+    return `<div class="empty-state"><strong>Màn hình dành cho quản trị viên</strong>
+      <span>Tài khoản ${escapeHtml(state.profile?.email || "")} chưa được cấp quyền cấu hình tài khoản. Liên hệ quản trị viên nếu bạn cần quyền này.</span></div>`;
+  }
+  if (!quanTri.daTai) {
+    taiDanhSachTaiKhoan().then(() => { if (state.page === "admin") renderPage(); });
+    return '<div class="empty-state"><strong>Đang đọc danh sách tài khoản…</strong><span>Kết nối tới Supabase.</span></div>';
+  }
+  if (quanTri.loi) {
+    return `<div class="empty-state"><strong>Chưa đọc được danh sách tài khoản</strong>
+      <span>${escapeHtml(quanTri.loi)}<br />Nếu đây là lần chạy đầu, cần dán <code>scripts/phan-quyen-supabase.sql</code> vào Supabase &gt; SQL Editor rồi bấm Run.</span></div>`;
+  }
+
+  const theoVaiTro = ["admin", "member", "viewer"]
+    .map(key => ({ key, ...VAI_TRO[key], so: state.users.filter(u => u.role === key && u.is_active).length }));
+  const tat = state.users.filter(u => !u.is_active).length;
+
+  return `
+    <section class="kpi-grid">
+      ${theoVaiTro.map(v => kpiCard(v.nhan, v.so, v.mo_ta, "admin", v.key === "admin" ? "brand" : "info")).join("")}
+      ${kpiCard("Đã tắt", tat, tat ? "Không đăng nhập vào app được" : "Mọi tài khoản đang hoạt động", "admin", tat ? "warning" : "success")}
+    </section>
+
+    ${panel("Cách phân quyền này hoạt động", "Đọc một lần để không đặt nhầm kỳ vọng",
+      `<div class="admin-note">
+        <p><strong>Vai trò</strong> quyết định được sửa gì: chỉ <em>Quản trị</em> mở được màn hình này và đổi quyền người khác; <em>Giao việc</em> tạo và cập nhật được công việc; <em>Chỉ xem</em> không đụng được vào công việc.</p>
+        <p><strong>Màn hình được xem</strong> quyết định người đó thấy mục nào ở thanh bên trái. Màn hình <em>Hướng dẫn sử dụng</em> luôn mở cho mọi người để không ai rơi vào màn hình trắng.</p>
+        <p class="admin-warning"><strong>Cần nói thẳng:</strong> việc bỏ một màn hình nghiệp vụ khỏi danh sách là để <em>dọn giao diện cho gọn đúng vai trò</em>, không phải để giấu số liệu. Chín màn hình nghiệp vụ đều đọc chung một nguồn dữ liệu, nên người đã đăng nhập và biết dùng công cụ lập trình của trình duyệt vẫn đọc được số liệu kho. Chỉ <em>Nhật ký</em> và <em>Cấu hình tài khoản</em> là được khoá tới tận tầng dữ liệu. Muốn ai đó không thấy số liệu kho thì đừng cấp tài khoản cho người đó.</p>
+        <p><strong>Thêm tài khoản mới:</strong> tạo trong Supabase Dashboard &gt; Authentication &gt; Users. Tài khoản mới sẽ tự hiện ở đây với vai trò <em>Chỉ xem</em>, rồi bạn cấp quyền tại màn hình này.</p>
+      </div>`)}
+
+    ${panel("Tài khoản", "Đổi vai trò, bật tắt truy cập và chọn màn hình cho từng người",
+      `<div class="account-list">${state.users.map(theTaiKhoan).join("")}</div>`,
+      `${state.users.length} tài khoản`)}
+  `;
+}
+
+async function luuTaiKhoan(userId) {
+  const the = els.pageContent.querySelector(`[data-user="${CSS.escape(userId)}"]`);
+  if (!the) return;
+  const nut = the.querySelector("[data-save-user]");
+  const oBao = the.querySelector("[data-msg]");
+  const truoc = state.users.find(u => u.user_id === userId);
+  const vaiTro = the.querySelector('[data-field="role"]').value;
+  const conHoatDong = the.querySelector('[data-field="is_active"]').checked;
+
+  // Tự hạ quyền chính mình là đường một chiều: lưu xong là mất luôn màn hình này.
+  if (userId === state.profile?.user_id && (vaiTro !== "admin" || !conHoatDong)) {
+    const dong = conHoatDong
+      ? `Bạn đang hạ vai trò của chính mình xuống "${VAI_TRO[vaiTro].nhan}".`
+      : "Bạn đang tắt hoạt động của chính tài khoản mình.";
+    if (!confirm(`${dong}\n\nLưu xong bạn sẽ KHÔNG mở được màn hình Cấu hình tài khoản nữa, và chỉ quản trị viên khác mới cấp lại được.\n\nVẫn tiếp tục?`)) return;
+  }
+
+  const payload = {
+    full_name: the.querySelector('[data-field="full_name"]').value.trim() || null,
+    role: vaiTro,
+    is_active: conHoatDong,
+    allowed_pages: [...the.querySelectorAll("[data-page-key]")]
+      .filter(o => o.checked && !o.disabled)
+      .map(o => o.dataset.pageKey),
+    updated_by: state.profile?.user_id || null,
+  };
+  // Hướng dẫn luôn mở nên ô của nó bị khoá, không nằm trong danh sách thu được.
+  if (!payload.allowed_pages.includes("guide")) payload.allowed_pages.unshift("guide");
+  // 'admin' không bao giờ được nằm trong allowed_pages — xem chú thích ở trangDuocXem().
+  payload.allowed_pages = payload.allowed_pages.filter(k => k !== "admin");
+
+  nut.disabled = true;
+  nut.textContent = "Đang lưu…";
+  oBao.textContent = "";
+  oBao.className = "account-msg";
+
+  const { data, error } = await window.supabase
+    .from("app_users").update(payload).eq("user_id", userId).select().maybeSingle();
+
+  nut.disabled = false;
+  nut.textContent = "Lưu thay đổi";
+
+  if (error) {
+    const noiDung = error.message.includes("ít nhất một quản trị viên")
+      ? "Không lưu được: hệ thống phải còn ít nhất một quản trị viên đang hoạt động."
+      : `Không lưu được: ${error.message}`;
+    oBao.textContent = noiDung;
+    oBao.className = "account-msg is-error";
+    return;
+  }
+
+  const moi = data || { ...truoc, ...payload };
+  state.users = state.users.map(u => (u.user_id === userId ? moi : u));
+  // Sửa chính mình thì hồ sơ đang dùng phải đổi theo ngay, nếu không thanh điều
+  // hướng vẫn hiện theo quyền cũ cho tới lần tải trang sau.
+  if (userId === state.profile?.user_id) {
+    state.profile = moi;
+    buildNav();
+  }
+  oBao.textContent = `Đã lưu lúc ${new Intl.DateTimeFormat("vi-VN", { timeStyle: "short" }).format(new Date())}`;
+  oBao.className = "account-msg is-ok";
+  toast(`Đã cập nhật quyền cho ${moi.email}`);
+  if (!trangDuocXem("admin")) renderPage();
 }
 
 function bindEvents() {
@@ -1642,16 +2059,58 @@ function bindEvents() {
     }
     createTask();
   });
-  els.pageContent.addEventListener("change", event => {
+  els.pageContent.addEventListener("change", async event => {
     const select = event.target.closest("[data-task-status-id]");
     if (!select) return;
     const task = state.tasks.find(item => item.id === select.dataset.taskStatusId);
     if (!task) return;
-    task.status = select.value;
-    task.updatedAt = new Date().toISOString();
-    saveTasks();
+    if (!duocSuaViec()) {
+      select.value = task.status;
+      toast("Tài khoản của bạn chỉ được xem, chưa sửa tiến độ được");
+      return;
+    }
+    const truoc = task.status;
+    const moi = select.value;
+    select.disabled = true;
+    const user = await nguoiDangDangNhap();
+    const { error } = await window.supabase.from("tasks")
+      .update({ status: moi, updated_by: user?.id || null, updated_by_email: user?.email || null })
+      .eq("id", task.id);
+    select.disabled = false;
+    if (error) {
+      // Trả về giá trị cũ, nếu không màn hình sẽ nói một đằng còn Supabase giữ một nẻo.
+      select.value = truoc;
+      toast(`Chưa cập nhật được: ${error.message}`);
+      return;
+    }
+    task.status = moi;
+    task.updatedByEmail = user?.email || "";
     renderPage();
-    toast("Đã cập nhật tiến độ nhiệm vụ");
+    toast("Đã cập nhật tiến độ — mọi người cùng thấy");
+  });
+
+  // Nút xoá nhiệm vụ và nút lưu tài khoản: để riêng một listener, không lẫn vào
+  // listener đào sâu dữ liệu bên trên.
+  els.pageContent.addEventListener("click", event => {
+    const nutXoa = event.target.closest("[data-delete-task]");
+    if (nutXoa) {
+      xoaViec(nutXoa.dataset.deleteTask);
+      return;
+    }
+    const nutLuu = event.target.closest("[data-save-user]");
+    if (nutLuu) luuTaiKhoan(nutLuu.dataset.saveUser);
+  });
+
+  // Đổi ô vai trò thì đổi luôn dòng mô tả bên dưới, và bật/tắt phần chọn màn
+  // hình — quản trị viên xem được tất cả nên chọn màn hình cho họ là vô nghĩa.
+  els.pageContent.addEventListener("change", event => {
+    const oVaiTro = event.target.closest('[data-field="role"]');
+    if (!oVaiTro) return;
+    const the = oVaiTro.closest("[data-user]");
+    const hint = the.querySelector("[data-role-hint]");
+    if (hint) hint.textContent = VAI_TRO[oVaiTro.value]?.mo_ta || "";
+    const oTrang = the.querySelector(".account-pages");
+    if (oTrang) oTrang.disabled = oVaiTro.value === "admin";
   });
 
   els.menuButton.addEventListener("click", () => {
@@ -1852,6 +2311,33 @@ function renderFreshness() {
 // Khi sync.py chạy xong, Supabase đẩy sự kiện xuống — app tự nạp lại, không cần bấm F5.
 // Bám vào sync_runs thay vì inventory: mỗi lượt đồng bộ chỉ sinh 1 sự kiện thay vì hàng trăm.
 function subscribeRealtime() {
+  // Việc giao trong cuộc họp phải hiện ngay trên máy người khác, không phải F5.
+  window.supabase
+    .channel("viec-giao")
+    .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
+      taiViec().then(() => {
+        if (["workflow", "details"].includes(state.page)) renderPage();
+      });
+    })
+    .subscribe();
+
+  // Quyền bị đổi giữa chừng: dựng lại thanh điều hướng ngay, không đợi tải lại trang.
+  window.supabase
+    .channel("phan-quyen")
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_users" }, async () => {
+      const truoc = JSON.stringify(state.profile);
+      state.profile = await taiHoSo();
+      quanTri.daTai = false;
+      if (JSON.stringify(state.profile) !== truoc) {
+        buildNav();
+        renderPage();
+        toast("Quyền của bạn vừa được cập nhật");
+      } else if (state.page === "admin") {
+        renderPage();
+      }
+    })
+    .subscribe();
+
   window.supabase
     .channel("dong-bo-ton-kho")
     .on("postgres_changes", { event: "*", schema: "public", table: "sync_runs" }, payload => {
@@ -1880,15 +2366,32 @@ async function refreshData() {
 
 async function init() {
   els.pageContent.innerHTML = '<div class="empty-state"><strong>Đang tải số liệu kho…</strong><span>Kết nối tới Supabase.</span></div>';
+
+  // Hồ sơ phân quyền phải có TRƯỚC khi dựng thanh điều hướng, nếu không người
+  // dùng sẽ thấy loé lên những mục họ không được vào rồi mới biến mất.
+  state.profile = await taiHoSo();
+
+  if (state.profile && state.profile.is_active === false) {
+    els.nav.innerHTML = "";
+    els.filterBar.hidden = true;
+    els.pageContent.innerHTML = `<div class="empty-state"><strong>Tài khoản đã bị tạm khoá</strong>
+      <span>Tài khoản ${escapeHtml(state.profile.email || "")} hiện không được mở báo cáo. Liên hệ quản trị viên để mở lại.</span></div>`;
+    return;
+  }
+
   state.data = await loadFromSupabase();
   state.records = state.data.records;
   state.rawRecords = state.data.rawRecords;
   state.movements = state.data.movements;
-  try {
-    state.tasks = JSON.parse(localStorage.getItem(TASK_STORAGE_KEY) || "[]");
-  } catch {
-    state.tasks = [];
+
+  await taiViec();
+  // Việc cũ còn nằm trong localStorage của máy này thì đẩy nốt lên rồi đọc lại.
+  const daChuyen = await chuyenViecCuLenSupabase();
+  if (daChuyen) {
+    await taiViec();
+    setTimeout(() => toast(`Đã chuyển ${daChuyen} việc cũ từ trình duyệt này lên Supabase`), 1200);
   }
+
   state.filtered = [...state.records];
   state.reportDate = state.data.meta.reportDate || state.reportDate;
   els.reportDate.value = state.reportDate;

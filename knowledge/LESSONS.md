@@ -79,3 +79,52 @@ tất cả đều kiểm chứng bằng dữ liệu thật chứ không suy đo�
   không thì deploy xong người dùng cũ không nhận được bản mới.
 - Mọi chuỗi tự do (do người nhập hoặc từ ERP) đổ vào `innerHTML` đều phải escape.
   Dữ liệu hôm nay sạch không có nghĩa là ngày mai vẫn sạch.
+
+---
+
+## 27/08/2026 — Phân quyền tài khoản + đưa việc giao lên Supabase
+
+Làm giai đoạn 5 của lộ trình: bảng `app_users` (ba vai trò + danh sách màn hình
+được xem), bảng `tasks` dùng chung, màn hình "Cấu hình tài khoản".
+
+**Sai gì / suýt sai gì:**
+
+| # | Vấn đề | Cách xử lý |
+|---|---|---|
+| 1 | Policy trên `app_users` phải đọc `app_users` để biết ai là admin | Tách ra hàm `security definer` — nếu không, Postgres báo đệ quy vô hạn và **không ai đăng nhập được** |
+| 2 | Quản trị viên cuối cùng có thể tự hạ vai trò mình, khoá cửa vĩnh viễn | Constraint trigger chặn ở cuối giao dịch + hộp xác nhận trong app |
+| 3 | Policy chặn được "ai sửa" nhưng không chặn được "sửa cột nào" | Cấp `grant update` theo từng cột — nếu không, member sửa được `created_by` của việc người khác thành tên mình |
+| 4 | Ba màn hình quản trị lặng lẽ biến mất khi chưa chạy file SQL | Thêm banner nói rõ nguyên nhân và chỉ đúng file cần chạy |
+| 5 | Dùng lại lớp `.stale-banner` (`display:flex`) cho câu có chèn `<code>` | Thẻ `code` bị tách thành cột riêng, câu vỡ làm đôi. Tách lớp `.setup-banner` |
+| 6 | Bài kiểm thử báo hỏng nhưng mã đúng | Đếm `class="account-card` khớp luôn `account-card-head`/`-foot`. Lỗi ở phép đo |
+
+**Rule rút ra:**
+
+- **RLS tự tham chiếu thì luôn phải đi qua hàm `security definer`** kèm
+  `set search_path`. Đây không phải mẹo tối ưu — để thiếu là hỏng toàn bộ đăng nhập.
+- **Mọi hệ phân quyền phải có tấm lưới chống tự khoá cửa.** Người có quyền cao
+  nhất bao giờ cũng có đường tự tước quyền của chính mình; phải chặn ở tầng
+  database, đừng chỉ chặn bằng hộp xác nhận trong giao diện.
+- **Policy quản "ai", grant theo cột quản "cái gì".** Có policy rồi vẫn phải hỏi
+  tiếp: người này sửa được những cột nào?
+- **Ẩn nút không phải là bảo mật.** Nhiều màn hình cùng đọc một bảng thì phân
+  quyền theo màn hình chỉ là dọn giao diện. Phải nói thẳng điều đó ngay trong app
+  cho người đi cấp quyền, nếu không họ sẽ tin là đã giấu được số liệu.
+- **Đổi chỗ lưu dữ liệu thì phải mang theo dữ liệu cũ.** Chuyển localStorage →
+  Supabase mà không có bước đẩy dữ liệu cũ lên là làm mất việc người ta đã giao.
+  Dùng một cột `legacy_id` có ràng buộc unique để chạy bao nhiêu lần cũng không trùng.
+- **Tính năng mới phải hỏng một cách biết nói.** Mã app lên trước khi chạy SQL là
+  chuyện bình thường; điều không chấp nhận được là màn hình biến mất mà không
+  giải thích lý do.
+- **Bài kiểm thử báo hỏng thì nghi phép đo trước, đừng vội sửa mã.** Đếm chuỗi
+  con trong HTML rất dễ khớp nhầm tên lớp dài hơn.
+- **Kiểm RLS phải đổi vai trò TRƯỚC khi câu lệnh được lập kế hoạch.** Nhét
+  `set_config('role', …)` vào một CTE giữa chừng câu lệnh thì Postgres đã lập kế
+  hoạch xong với vai trò cũ — truy vấn đọc đủ dữ liệu và **trông y như RLS
+  hỏng**. Cách đúng: `begin; set local role authenticated; set local
+  "request.jwt.claims" = '{"sub":"…"}'; select …;` rồi `rollback`.
+  Suýt kết luận sai là RLS không chặn được gì.
+- **Phép thử phá hoại phải chạy trong transaction có đường lùi.** Muốn biết tấm
+  lưới chống tự khoá cửa có hoạt động không thì phải thử hạ đúng quản trị viên
+  duy nhất. Dùng `begin; …; set constraints all immediate; rollback;` —
+  trigger hoãn-lại bị ép chạy ngay, thấy được kết quả mà không commit gì.

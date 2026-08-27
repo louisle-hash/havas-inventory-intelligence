@@ -3,7 +3,7 @@
 Tài liệu này giữ những gì **không đọc ra được từ mã nguồn**: quyết định đã chốt,
 sự thật về dữ liệu phải mất công mới xác lập, và chỗ cất từng bí mật.
 
-Cập nhật: 27/08/2026 · commit `74da37a`
+Cập nhật: 27/08/2026 (lần 2) · commit `193da01` + phần phân quyền chưa commit
 
 ---
 
@@ -75,6 +75,9 @@ giữ nguyên tắc này.
 | Chỉ hiện block **còn tồn**, không hiện lịch sử đã xuất | Louis | Đúng phạm vi "báo cáo tồn kho" |
 | **Không dọn** dữ liệu tháng 7 khỏi lịch sử git | Louis (phương án B) | Ảnh chụp kho 28/07 vẫn tải được từ commit cũ |
 | Lịch chạy qua **Supabase pg_cron**, không dùng lịch GitHub | Claude đề xuất, Louis chọn | GitHub bỏ lỡ 21/24 lượt ngày 26/08, hôm sau bỏ hẳn |
+| **hau.le@havas.vn** là quản trị viên đầu tiên | Claude đặt mặc định 27/08 | Phải có ít nhất một admin, nếu không màn hình Cấu hình không ai mở được. Đổi được trong app |
+| Ba tài khoản còn lại mặc định **member**, chưa cấp 3 màn hình quản trị | Claude đặt mặc định 27/08 | Đúng ý "có user không được xem màn hình quản trị". Quản trị viên tự cấp thêm |
+| Việc giao: **mọi member sửa được mọi việc**, chỉ người tạo và admin xoá được | Claude đề xuất 27/08 | Họp thì ai cập nhật cũng được; nhưng xoá là mất dấu nên siết hơn |
 
 ---
 
@@ -87,9 +90,14 @@ giữ nguyên tắc này.
 | `snapshots` | Ghi đè theo ngày | Một ngày đúng một dòng |
 | `sync_runs` | Chỉ thêm | Nhật ký vận hành |
 | `login_log` | Chỉ thêm — **bảng kiểm toán** | User không sửa/xoá được dấu vết của mình |
+| `app_users` | Sửa tại chỗ, chỉ quản trị viên | Vai trò + danh sách màn hình của từng tài khoản |
+| `tasks` | Người dùng tự thêm / sửa / xoá | Việc giao trong họp — **không** do sync.py đụng tới |
 
-**Mọi bảng đều xoá-rồi-ghi-lại, không cộng dồn** → chạy lại bao nhiêu lần cũng
-ra cùng kết quả. Chạy bù an toàn.
+**Năm bảng do sync.py ghi đều xoá-rồi-ghi-lại, không cộng dồn** → chạy lại bao
+nhiêu lần cũng ra cùng kết quả. Chạy bù an toàn.
+
+`app_users` và `tasks` **nằm ngoài vòng đó**: do người dùng nhập, sync.py không
+bao giờ đụng tới. Chạy lại sync.py không làm mất việc đã giao hay quyền đã cấp.
 
 ---
 
@@ -130,7 +138,94 @@ Khi nghi lịch tự động không chạy: mở `scripts/cron-supabase.sql`, ph
 
 ---
 
-## 7. Còn treo
+## 7. Phân quyền — thêm 27/08/2026
+
+### Ba vai trò
+
+| Vai trò | Sửa được cấu hình tài khoản | Giao / sửa việc | Màn hình xem được |
+|---|---|---|---|
+| `admin` | Có | Có | **Tất cả**, bất kể `allowed_pages` ghi gì |
+| `member` | Không | Có | Theo `allowed_pages` |
+| `viewer` | Không | Không | Theo `allowed_pages` |
+
+Đổi vai trò và danh sách màn hình ngay trong app: màn hình **Cấu hình tài khoản**.
+Thêm tài khoản mới thì vẫn tạo ở Supabase Dashboard > Authentication > Users;
+một trigger sẽ tự sinh hồ sơ với vai trò `viewer`.
+
+### Điều dễ hiểu sai nhất — phải nói thẳng với người dùng
+
+`allowed_pages` là **hàng rào giao diện, không phải hàng rào dữ liệu.**
+
+Chín màn hình nghiệp vụ đều đọc chung hai bảng `inventory` và `movements`. Bỏ
+"Theo kho" khỏi danh sách của ai đó thì người đó không thấy nút vào, nhưng người
+biết mở công cụ lập trình của trình duyệt vẫn đọc được toàn bộ số liệu kho.
+
+Chỉ **hai** trường hợp được chặn tới tận tầng dữ liệu, vì chúng đọc bảng riêng
+và có policy riêng:
+
+| Màn hình | Bảng | Policy |
+|---|---|---|
+| Nhật ký | `login_log` | `using (public.duoc_xem_trang('logs'))` |
+| Cấu hình tài khoản | `app_users` | chỉ đọc dòng của chính mình, trừ admin |
+
+→ Dùng `allowed_pages` để **dọn màn hình cho gọn đúng vai trò**. Muốn ai đó
+không thấy số liệu kho thì **đừng cấp tài khoản** cho người đó.
+
+### Ba tấm lưới an toàn đã cài trong database
+
+1. **Ba hàm tra quyền bắt buộc là `security definer`.** Nếu để hàm thường, policy
+   trên `app_users` phải đọc `app_users` để biết ai là admin, mà đọc `app_users`
+   lại kích hoạt chính policy đó → Postgres báo đệ quy vô hạn và **không ai đăng
+   nhập được nữa**. Đừng bỏ `security definer`, cũng đừng bỏ `set search_path`.
+2. **Trigger `app_users_giu_quan_tri`** chặn tình huống quản trị viên cuối cùng
+   tự hạ vai trò mình — gỡ ra chỉ còn cách vào SQL Editor sửa tay.
+3. **Quyền UPDATE cấp theo cột.** Policy chặn được "ai sửa" nhưng không chặn được
+   "sửa cột nào"; không có `grant update (…cột…)` thì một member có thể sửa
+   `created_by` của việc người khác thành tên mình.
+
+### Việc giao không còn ở trình duyệt
+
+Bảng `tasks` trên Supabase, bật Realtime — giao xong hiện ngay trên máy người
+khác. App **không còn ghi vào localStorage**; lần chạy đầu nó đọc khoá cũ
+`havas-inventory-tasks-v1` một lần, đẩy nốt việc cũ lên Supabase (cột `legacy_id`
+có ràng buộc unique nên không sinh bản trùng dù nhiều máy cùng giữ bản sao), rồi
+xoá hẳn khoá đó.
+
+Thứ **duy nhất** còn nằm trong localStorage là **phiếu đăng nhập của Supabase
+Auth**. Đó là token phiên, không phải dữ liệu kho, và bắt buộc phải có thì đóng
+tab mở lại mới không phải đăng nhập lại.
+
+### Đã nghiệm thu trên Supabase thật — 27/08/2026
+
+`scripts/phan-quyen-supabase.sql` đã chạy trên project `sgsrtpsvhnyjdmlevskr`,
+nhánh `main`. Kiểm bằng cách giả lập phiên của `quang.nv@havas.vn` (vai trò
+`member`) ngay trong Postgres, mọi phép thử ghi đều bọc trong transaction rồi
+rollback nên database không bị đụng.
+
+| Phép thử | Mong đợi | Thực tế |
+|---|---|---|
+| RLS bật trên `app_users` · `tasks` · `login_log` | bật cả ba | ✅ cả ba |
+| 9 policy, 5 hàm tra quyền, 4 trigger | có đủ | ✅ có đủ, cả 5 hàm đều `security definer` |
+| `member` đọc `login_log` (không được cấp màn hình Nhật ký) | 0 dòng | ✅ 0 dòng |
+| `member` đọc `app_users` | 1 dòng — chỉ mình | ✅ 1 dòng |
+| `member` đọc `inventory` | vẫn đọc được | ✅ 780 dòng |
+| `member` sửa quyền người khác | 0 dòng | ✅ 0 dòng |
+| **`member` tự thăng mình lên `admin`** | **0 dòng** | ✅ **0 dòng** |
+| `member` giao việc | 1 dòng | ✅ 1 dòng |
+| Hạ quản trị viên **duy nhất** xuống `member` | bị chặn | ✅ `ERROR P0001: Phải còn ít nhất một quản trị viên đang hoạt động` |
+| `authenticated` sửa được cột nào của `tasks` | không có `created_by`, `created_at`, `legacy_id` | ✅ chỉ 11 cột nghiệp vụ |
+| `authenticated` sửa được cột nào của `app_users` | không có `user_id`, `email`, `created_at` | ✅ chỉ 5 cột |
+| Realtime | bật cho `tasks` và `app_users` | ✅ bật cả hai |
+
+**Một điều học được khi kiểm:** đổi `role` bằng `set_config()` giữa chừng một câu
+lệnh **không** kiểm được RLS — Postgres quyết định áp policy nào ở lúc **lập kế
+hoạch**, trước khi CTE chạy, nên truy vấn vẫn đọc đủ dữ liệu và trông như RLS
+hỏng. Phải `begin; set local role authenticated; set local "request.jwt.claims" = …;`
+rồi mới chạy câu SELECT thì kế hoạch mới được lập với đúng vai trò.
+
+---
+
+## 8. Còn treo
 
 **Câu hỏi nghiệp vụ — quan trọng hơn mọi tính năng:**
 
@@ -150,6 +245,8 @@ Khi nghi lịch tự động không chạy: mở `scripts/cron-supabase.sql`, ph
    chốt khoảng 10 loại cố định trong ERP. Không phải việc code.
 6. Tài khoản chỉ-đọc cho SQL thay cho `sa` — khi nào IT sẵn sàng, chỉ đổi 2 dòng
    trong `.env` và GitHub Secrets.
+7. **Tạo tài khoản mới vẫn phải vào Supabase Dashboard.** Làm được trong app thì
+   cần một Edge Function giữ secret key. Chưa làm vì chỉ có 4 tài khoản.
 
 **Đã bỏ, đừng làm lại:** chia lại dải tuổi tồn. Lý do ban đầu (dồn cục vào 2 dải)
 đã tự biến mất; 4 dải đang dùng đều có số liệu, 2 dải cuối rỗng là **thông tin

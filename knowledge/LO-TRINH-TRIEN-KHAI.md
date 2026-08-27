@@ -90,11 +90,15 @@ Thêm 1 trang: 6 con số, 3 nhận định, 3 việc cần quyết — vừa m�
 
 → Được: giám đốc nhìn 10 giây biết kho ổn hay không, và không ổn ở đâu
 
-### GĐ 5 — Giao việc dùng chung · 3–5 ngày
-- Hiện task lưu localStorage từng người: họp xong không ai thấy việc của ai, đổi máy là mất
-- Chuyển sang Supabase (free): bảng `tasks`, đăng nhập email công ty, phân quyền RLS
-- Giữ nguyên giao diện phân công theo barcode, chỉ đổi chỗ lưu
-→ Được: giao việc trong họp, ai cũng thấy, có lịch sử, mở điện thoại được
+### GĐ 5 — Giao việc dùng chung · ~~3–5 ngày~~ ĐÃ LÀM 27/08/2026
+- ~~Hiện task lưu localStorage từng người: họp xong không ai thấy việc của ai, đổi máy là mất~~
+- ~~Chuyển sang Supabase (free): bảng `tasks`, đăng nhập email công ty, phân quyền RLS~~
+- ~~Giữ nguyên giao diện phân công theo barcode, chỉ đổi chỗ lưu~~
+→ Xong. Làm rộng hơn dự kiến: kèm luôn bảng `app_users` với ba vai trò
+  (admin / member / viewer) và danh sách màn hình được xem cho từng tài khoản,
+  cùng màn hình "Cấu hình tài khoản" để quản trị viên tự đổi quyền trong app.
+  Chi tiết ở `knowledge/BAN-GIAO.md` mục 7, kèm bảng nghiệm thu RLS.
+  SQL đã chạy trên Supabase ngày 27/08/2026, hệ thống đang hoạt động.
 
 ### GĐ 6 — Vận hành · liên tục
 - 6:15 sáng: email/Zalo tóm tắt 6 chỉ số + cảnh báo vượt ngưỡng
