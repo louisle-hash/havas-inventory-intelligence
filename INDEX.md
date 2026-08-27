@@ -16,6 +16,8 @@ Cập nhật mục lục: 26/08/2026
 | `styles.css` | Toàn bộ giao diện |
 | `scripts/sync.py` | **Đồng bộ SQL Server → Supabase.** Chạy: `.venv/bin/python scripts/sync.py` |
 | `scripts/build_data.py` | Đường cũ: CSV → JSON tĩnh. Giữ lại để đối chiếu, không còn dùng |
+| `scripts/cron-supabase.sql` | Bản sao lịch tự động đang chạy trong Supabase + cách tra khi nghi lịch hỏng |
+| `scripts/dat-secrets.py` | Đẩy cấu hình từ `.env` lên GitHub Secrets |
 | `.env.example` | Mẫu cấu hình. Sao chép thành `.env` rồi điền |
 | `Logo/` | Logo Havas |
 
@@ -46,6 +48,6 @@ Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt 
 
 ## Việc còn lại
 
-1. Dựng GitHub Actions chạy `sync.py` theo lịch 30 phút/lượt trong giờ hành chính
-2. Gỡ `data/inventory.json` khỏi git và khỏi lịch sử, rồi push
+1. ~~Dựng lịch chạy tự động~~ — xong, Supabase pg_cron gọi ngược GitHub, xem `scripts/cron-supabase.sql`
+2. ~~Gỡ `data/inventory.json` khỏi git~~ — xong. Lịch sử git cũ vẫn còn dữ liệu tháng 7 (quyết định giữ nguyên)
 3. Chia lại dải tuổi tồn cho khớp nhịp kho thật (xem `knowledge/LESSONS.md`)
