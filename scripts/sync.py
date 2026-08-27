@@ -279,14 +279,17 @@ class Supabase:
                                   params={"report_date": f"eq.{report_date}"},
                                   timeout=HTTP_TIMEOUT), f"xoá {bang}")
 
-    def xoa_tat_ca(self, bang: str):
+    def xoa_ngay_khac(self, bang: str, report_date: date):
         """Dùng cho movements: mỗi lượt chạy đã trả về TOÀN BỘ lịch sử nhập-xuất,
-        nên giữ nhiều bản theo ngày chỉ là chép lại cùng một dữ liệu. Xoá sạch
-        rồi ghi mới giữ bảng luôn gọn — nếu không, sau 1 năm bảng phình lên 3,7
-        triệu dòng và vượt hạn mức 500 MB của gói miễn phí."""
+        nên giữ nhiều bản theo ngày chỉ là chép lại cùng một dữ liệu — sau 1 năm
+        bảng phình lên 3,7 triệu dòng và vượt hạn mức 500 MB của gói miễn phí.
+
+        Xoá các ngày KHÁC chứ không xoá sạch, và chỉ gọi SAU khi đã ghi xong bộ
+        mới. Nếu xoá trước rồi ghi lỗi giữa chừng thì bảng trống rỗng và biểu đồ
+        nhịp nhập xuất biến mất cho tới lượt đồng bộ kế tiếp."""
         self._check(self.s.delete(f"{self.base}/{bang}",
-                                  params={"id": "gt.0"},
-                                  timeout=HTTP_TIMEOUT), f"xoá sạch {bang}")
+                                  params={"report_date": f"neq.{report_date}"},
+                                  timeout=HTTP_TIMEOUT), f"dọn ngày cũ khỏi {bang}")
 
     def them(self, bang: str, rows: list[dict]):
         for i in range(0, len(rows), BATCH):
@@ -361,9 +364,11 @@ def main() -> int:
         sb.them("inventory", ton)
         print(f"    {'inventory':<12} {len(ton):,} dòng  (ảnh chụp ngày {report_date})")
 
-        # movements: chỉ giữ bản mới nhất, xem chú thích ở xoa_tat_ca().
-        sb.xoa_tat_ca("movements")
+        # Ghi bộ mới TRƯỚC, dọn ngày cũ SAU — nếu ghi lỗi thì dữ liệu cũ vẫn còn
+        # nguyên thay vì để bảng trống. Xem chú thích ở xoa_ngay_khac().
+        sb.xoa_theo_ngay("movements", report_date)
         sb.them("movements", bien_dong)
+        sb.xoa_ngay_khac("movements", report_date)
         print(f"    {'movements':<12} {len(bien_dong):,} dòng  (thay toàn bộ)")
         sb.ghi_de("snapshots", [snapshot], on_conflict="report_date")
         print(f"    {'snapshots':<12} 1 dòng")

@@ -157,6 +157,7 @@ const TASK_STORAGE_KEY = "havas-inventory-tasks-v1";
 const formatNumber = (value, digits = 0) =>
   new Intl.NumberFormat("vi-VN", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
 const formatDate = value => (value ? new Intl.DateTimeFormat("vi-VN").format(new Date(value)) : "—");
+const escapeHtml = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const escapeAttr = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const unique = values => [...new Set(values)].sort((a, b) => String(a).localeCompare(String(b), "vi", { sensitivity: "base" }));
 const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] || 0), 0);
@@ -413,9 +414,9 @@ function rankChart(items, accent = "#b22536") {
   const max = Math.max(...items.map(item => item.value), 1);
   return `<div class="rank-chart">${items.map((item, index) => {
     const percentage = item.value / max * 100;
-    return `<button class="rank-row" data-drill-type="${item.drillType}" data-drill-value="${item.drillValue}">
+    return `<button class="rank-row" data-drill-type="${item.drillType}" data-drill-value="${escapeAttr(item.drillValue)}">
       <span class="rank-number">${String(index + 1).padStart(2, "0")}</span>
-      <span class="rank-copy"><strong title="${item.label}">${item.label}</strong><span>${item.note || "Dung tích đang tồn"}</span></span>
+      <span class="rank-copy"><strong title="${escapeAttr(item.label)}">${escapeHtml(item.label)}</strong><span>${item.note || "Dung tích đang tồn"}</span></span>
       <span class="rank-track"><i style="width:${Math.max(percentage, 2)}%;--rank-color:${item.color || accent}"></i></span>
       <b>${formatNumber(item.value, 1)} m³</b>
     </button>`;
@@ -571,7 +572,7 @@ function heatmap(rows = state.filtered) {
 function productTable(rows = state.filtered) {
   const products = productGroups(rows).sort((a, b) => b.volume - a.volume);
   return `<div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>Block tồn</th><th>m3 tồn</th><th>Tuổi TB</th><th>Trạng thái chính</th><th></th></tr></thead><tbody>
-    ${products.map(item => `<tr class="interactive-row" data-product="${item.productFull}">
+    ${products.map(item => `<tr class="interactive-row" data-product="${escapeAttr(item.productFull)}">
       <td data-sort-value="${item.productFull}"><div class="product-cell"><strong>${item.product}</strong><span>${item.productFull}</span></div></td>
       <td>${item.color}</td>
       <td>${item.warehouseMix}</td>
@@ -776,7 +777,9 @@ function actionsPage(rows = state.filtered) {
 
 function taskDueState(task) {
   if (task.status === "Hoàn thành") return "done";
-  const today = new Date(`${state.reportDate}T00:00:00`);
+  // Mốc so hạn phải là NGÀY THẬT HÔM NAY. Trước đây dùng state.reportDate nên
+  // người dùng đổi ô "Ngày báo cáo" là toàn bộ task đổi tình trạng hạn theo.
+  const today = new Date(new Date().toDateString());
   const deadline = new Date(`${task.deadline}T00:00:00`);
   const days = Math.ceil((deadline - today) / 86400000);
   if (days < 0) return "overdue";
@@ -809,7 +812,7 @@ function workflowPage() {
     </section>
     <div class="dashboard-grid">
       ${panel("Bức tranh luồng việc", "Số nhiệm vụ đang nằm tại mỗi bước xử lý", `<div class="workflow-pipeline">${workflow.map((item, index) => `<div><span>${String(index + 1).padStart(2, "0")}</span><strong>${item.count}</strong><small>${item.status}</small></div>`).join("")}</div>`, `${tasks.length} nhiệm vụ`)}
-      ${panel("Phân bổ công việc theo người phụ trách", "Hỗ trợ cân đối công việc và cùng cập nhật các nhiệm vụ đến hạn", assignees.length ? `<div class="assignee-load">${assignees.map(item => `<div><span><strong>${item.name}</strong><small>${item.total} nhiệm vụ</small></span><b>${item.open} đang mở</b><em class="${item.overdue ? "has-overdue" : ""}">${item.overdue} quá hạn</em></div>`).join("")}</div>` : '<div class="empty-state"><strong>Chưa có người phụ trách</strong><span>Có thể phân công từ bảng barcode để bắt đầu theo dõi.</span></div>')}
+      ${panel("Phân bổ công việc theo người phụ trách", "Hỗ trợ cân đối công việc và cùng cập nhật các nhiệm vụ đến hạn", assignees.length ? `<div class="assignee-load">${assignees.map(item => `<div><span><strong>${escapeHtml(item.name)}</strong><small>${item.total} nhiệm vụ</small></span><b>${item.open} đang mở</b><em class="${item.overdue ? "has-overdue" : ""}">${item.overdue} quá hạn</em></div>`).join("")}</div>` : '<div class="empty-state"><strong>Chưa có người phụ trách</strong><span>Có thể phân công từ bảng barcode để bắt đầu theo dõi.</span></div>')}
     </div>
     ${panel("Danh sách nhiệm vụ theo barcode", "Có thể cập nhật tiến độ ngay trong bảng; dữ liệu đang lưu trên trình duyệt này", taskTable(tasks), `${open.length} việc đang mở`, "table-panel")}
   `;
@@ -819,13 +822,15 @@ function taskTable(tasks) {
   if (!tasks.length) return '<div class="empty-state"><strong>Chưa có nhiệm vụ</strong><span>Mở một sản phẩm hoặc bảng chi tiết block và chọn “Phân công”.</span></div>';
   return `<div class="table-wrap"><table><thead><tr><th>Barcode / sản phẩm</th><th>Nhiệm vụ</th><th>Phụ trách</th><th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Tiến độ</th><th>Tình trạng hạn</th></tr></thead><tbody>
     ${tasks.map(task => {
-      const record = state.records.find(row => (row.barcode || row.rowId) === task.barcode);
+      // Task cũ lưu theo barcode, task mới lưu rowId — tra rowId trước cho chính xác.
+      const record = state.records.find(row => row.rowId === (task.rowId || task.barcode))
+                  || state.records.find(row => (row.barcode || row.rowId) === task.barcode);
       const due = taskDueState(task);
       const dueLabel = due === "overdue" ? "Quá hạn" : due === "due-soon" ? "Sắp đến hạn" : due === "done" ? "Đã đóng" : "Đúng tiến độ";
       return `<tr>
-        <td><div class="product-cell"><strong>${task.barcode}</strong><span>${record ? `${record.productFull} · ${record.warehouse}` : "Barcode ngoài tồn hiện tại"}</span></div></td>
-        <td><div class="product-cell"><strong>${task.title}</strong><span>${task.note || "Không có ghi chú"}</span></div></td>
-        <td>${task.assignee}</td><td>${formatDate(task.startDate)}</td><td>${formatDate(task.deadline)}</td>
+        <td><div class="product-cell"><strong>${escapeHtml(task.barcode)}</strong><span>${record ? `${escapeHtml(record.productFull)} · ${escapeHtml(record.warehouse)}` : "Barcode ngoài tồn hiện tại"}</span></div></td>
+        <td><div class="product-cell"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.note) || "Không có ghi chú"}</span></div></td>
+        <td>${escapeHtml(task.assignee)}</td><td>${formatDate(task.startDate)}</td><td>${formatDate(task.deadline)}</td>
         <td><span class="task-priority priority-${task.priority === "Khẩn cấp" ? "urgent" : task.priority === "Cao" ? "high" : "normal"}">${task.priority}</span></td>
         <td><select class="task-status-select" data-task-status-id="${task.id}">${["Chưa bắt đầu", "Đang xử lý", "Chờ xác nhận", "Hoàn thành"].map(status => `<option ${status === task.status ? "selected" : ""}>${status}</option>`).join("")}</select></td>
         <td><span class="due-state due-${due}">${dueLabel}</span></td>
@@ -840,7 +845,7 @@ function productRiskTable(rows) {
     risk: item.statusLead === "Chưa xác định" ? 3 : item.statusLead === "SX dư" ? 2 : 1,
   })).sort((a, b) => b.risk - a.risk || b.volume - a.volume).slice(0, 10);
   return `<div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>m3 tồn</th><th>Tuổi TB</th><th>Trạng thái dẫn dắt</th></tr></thead><tbody>
-    ${items.map(item => `<tr class="interactive-row" data-product="${item.productFull}"><td>${item.product}</td><td>${item.color}</td><td>${item.warehouseMix}</td><td class="numeric" data-sort-value="${item.volume}">${formatNumber(item.volume, 1)} m³</td><td class="numeric" data-sort-value="${item.age}">${formatNumber(item.age, 0)} ngày</td><td>${badge(item.statusLead)}</td></tr>`).join("")}
+    ${items.map(item => `<tr class="interactive-row" data-product="${escapeAttr(item.productFull)}"><td>${escapeHtml(item.product)}</td><td>${item.color}</td><td>${item.warehouseMix}</td><td class="numeric" data-sort-value="${item.volume}">${formatNumber(item.volume, 1)} m³</td><td class="numeric" data-sort-value="${item.age}">${formatNumber(item.age, 0)} ngày</td><td>${badge(item.statusLead)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
 
@@ -863,8 +868,8 @@ function detailsPage(rows = state.filtered) {
 
 function barChart(items, valueFormatter = value => formatMetric(value, "volume"), color = "#b22536") {
   const max = Math.max(...items.map(item => item.value), 1);
-  return `<div class="bar-chart">${items.map(item => `<button class="bar-row bar-drill" ${item.drillType ? `data-drill-type="${item.drillType}" data-drill-value="${item.drillValue}"` : ""}>
-        <span class="bar-label" title="${item.label}">${item.label}</span>
+  return `<div class="bar-chart">${items.map(item => `<button class="bar-row bar-drill" ${item.drillType ? `data-drill-type="${item.drillType}" data-drill-value="${escapeAttr(item.drillValue)}"` : ""}>
+        <span class="bar-label" title="${escapeAttr(item.label)}">${escapeHtml(item.label)}</span>
         <div class="bar-track"><div class="bar-fill" style="width:${Math.max(item.value / max * 100, 1)}%;--bar-color:${item.color || color}"></div></div>
         <span class="bar-value">${valueFormatter(item.value)}</span>
       </button>`).join("")}</div>`;
@@ -1147,6 +1152,20 @@ function populateFilters() {
   const ages = unique(state.records.map(row => row.ageBucket));
   const statuses = unique(state.records.map(row => row.status));
   const warehouses = unique(state.records.map(row => row.warehouse));
+
+  // Sau mỗi lần đồng bộ, một giá trị đang được lọc có thể đã biến mất khỏi dữ
+  // liệu (ví dụ mã hàng vừa xuất hết). Nếu không dọn, ô select hiện "Tất cả"
+  // trong khi bộ lọc vẫn giữ giá trị cũ và bảng trống trơn không rõ lý do.
+  const conTonTai = { warehouse: warehouses, product: products, color: colors, age: ages, status: statuses };
+  let daDon = false;
+  for (const [khoa, danhSach] of Object.entries(conTonTai)) {
+    if (state.filters[khoa] !== "all" && !danhSach.includes(state.filters[khoa])) {
+      state.filters[khoa] = "all";
+      daDon = true;
+    }
+  }
+  if (daDon) toast("Một số giá trị đang lọc không còn trong dữ liệu mới — đã bỏ lọc đó.");
+
   els.warehouseFilter.innerHTML = `<option value="all">Tất cả kho</option>${optionsMarkup(warehouses, state.filters.warehouse)}`;
   els.productFilter.innerHTML = `<option value="all">Tất cả sản phẩm</option>${optionsMarkup(products, state.filters.product)}`;
   els.colorFilter.innerHTML = `<option value="all">Tất cả màu</option>${optionsMarkup(colors, state.filters.color)}`;
@@ -1247,7 +1266,9 @@ function saveTasks() {
 }
 
 function openTaskModal(barcode) {
-  const record = state.records.find(row => (row.barcode || row.rowId) === barcode);
+  // barcode KHÔNG duy nhất (2.076 mã cho 2.178 dòng) nên tra theo rowId trước.
+  const record = state.records.find(row => row.rowId === barcode)
+              || state.records.find(row => (row.barcode || row.rowId) === barcode);
   const today = state.reportDate || new Date().toISOString().slice(0, 10);
   const deadline = new Date(`${today}T00:00:00`);
   deadline.setDate(deadline.getDate() + 7);
@@ -1281,6 +1302,8 @@ function createTask() {
   state.tasks.push({
     id: `TASK-${Date.now()}`,
     barcode: els.taskBarcode.value,
+    // Lưu thêm rowId vì barcode không duy nhất; rowId mới là khoá tra chính xác.
+    rowId: state.selectedTaskBarcode,
     title: els.taskTitle.value.trim(),
     assignee: els.taskAssignee.value.trim(),
     startDate: els.taskStartDate.value,
@@ -1326,9 +1349,10 @@ function bindEvents() {
     applyFilters();
   });
 
+  // Ô ngày chỉ HIỂN THỊ số liệu tính đến ngày nào — không phải bộ lọc.
   els.reportDate.addEventListener("change", () => {
-    state.reportDate = els.reportDate.value;
-    toast("Ngày báo cáo đang là mốc hiển thị. Tuổi tồn hiện lấy từ dữ liệu build gần nhất.");
+    els.reportDate.value = state.reportDate;
+    toast("Đây là ngày của lần đồng bộ gần nhất, không đổi được. Dữ liệu tự cập nhật theo lịch.");
   });
 
   els.exportButton.addEventListener("click", exportCurrentCsv);
@@ -1537,7 +1561,10 @@ async function loadFromSupabase() {
 
   const [inventoryRows, movementRows, runRows] = await Promise.all([
     fetchAll("inventory", "*", { report_date: reportDate }),
-    fetchAll("movements", "*", { report_date: reportDate }),
+    // Bảng movements luôn chỉ giữ MỘT bộ đầy đủ (sync.py thay toàn bộ mỗi lượt),
+    // nên không lọc theo report_date. Lọc sẽ trả về rỗng khi ai đó chạy backfill
+    // bằng --date cho một ngày cũ, làm biểu đồ nhịp nhập xuất trống trơn.
+    fetchAll("movements", "*"),
     window.supabase.from("sync_runs").select("*")
       .eq("status", "success").order("finished_at", { ascending: false }).limit(1)
       .then(r => r.data || []),
@@ -1563,6 +1590,21 @@ async function loadFromSupabase() {
 
 // Hiện rõ dữ liệu tươi tới đâu, và cảnh báo khi đã quá cũ.
 const STALE_HOURS = 26;
+
+// Lịch đồng bộ chỉ chạy thứ Hai đến thứ Sáu, nên đếm giờ trôi qua theo lịch sẽ
+// khiến sáng thứ Hai nào cũng vượt ngưỡng (~66 giờ kể từ 18:30 thứ Sáu) và bật
+// báo động giả. Chỉ đếm những giờ mà lịch đáng lẽ phải chạy.
+function gioLamViecTroiQua(tu, den) {
+  let gio = 0;
+  const moc = new Date(tu.getTime());
+  while (moc < den) {
+    const ke = new Date(Math.min(moc.getTime() + 3600000, den.getTime()));
+    const thu = moc.getDay();
+    if (thu >= 1 && thu <= 5) gio += (ke - moc) / 3600000;
+    moc.setTime(ke.getTime());
+  }
+  return gio;
+}
 function renderFreshness() {
   const finished = state.data?.lastRun?.finished_at;
   if (!finished) {
@@ -1570,7 +1612,7 @@ function renderFreshness() {
     return;
   }
   const when = new Date(finished);
-  const hours = (Date.now() - when.getTime()) / 3600000;
+  const hours = gioLamViecTroiQua(when, new Date());
   const stamp = new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(when);
   const run = state.data?.lastRun;
   const khoang = run?.doc_date_from && run?.doc_date_to
@@ -1584,7 +1626,7 @@ function renderFreshness() {
     els.staleBanner.hidden = !stale;
     if (stale) {
       els.staleBanner.textContent =
-        `Dữ liệu chưa được cập nhật ${Math.floor(hours)} giờ. Số liệu bên dưới là của lần đồng bộ lúc ${stamp}.`;
+        `Dữ liệu chưa được cập nhật ${Math.floor(hours)} giờ làm việc. Số liệu bên dưới là của lần đồng bộ lúc ${stamp}.`;
     }
   }
 }
@@ -1596,7 +1638,12 @@ function subscribeRealtime() {
     .channel("dong-bo-ton-kho")
     .on("postgres_changes", { event: "*", schema: "public", table: "sync_runs" }, payload => {
       if (payload.new?.status !== "success") return;
-      refreshData().then(() => toast("Đã có số liệu mới từ kho"));
+      refreshData()
+        .then(() => toast("Đã có số liệu mới từ kho"))
+        .catch(error => {
+          console.error("Không tải lại được dữ liệu:", error);
+          toast("Có số liệu mới nhưng chưa tải được. Kiểm tra mạng rồi tải lại trang.");
+        });
     })
     .subscribe();
 }
