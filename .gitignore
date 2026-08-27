@@ -12,6 +12,12 @@ secrets.json
 data/*.json
 data/snapshots/
 
+# --- Output kiểm thử: có ảnh chụp, dữ liệu thật và email nhân sự ---
+# knowledge/BAN-GIAO.md vẫn ghi là dòng này đã có từ trước, nhưng thực tế chưa.
+# Bổ sung 27/08/2026 khi bản xem trước màn hình Cấu hình (có email @havas.vn)
+# suýt được đưa vào repo PUBLIC.
+test/
+
 # --- Rác hệ thống / công cụ ---
 .DS_Store
 .playwright-cli/
