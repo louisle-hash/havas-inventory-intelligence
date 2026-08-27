@@ -18,6 +18,11 @@ data/snapshots/
 # suýt được đưa vào repo PUBLIC.
 test/
 
+# --- Dữ liệu cũ đã cho về hưu: giữ trên đĩa để tra, không bao giờ lên repo ---
+# Luật *.csv / *.xlsx / data/*.json ở trên KHÔNG bắt được đường dẫn mới, nên
+# phải chặn riêng thư mục này.
+obsolete/**/du-lieu-cu/
+
 # --- Rác hệ thống / công cụ ---
 .DS_Store
 .playwright-cli/

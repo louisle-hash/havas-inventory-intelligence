@@ -15,7 +15,7 @@ Cập nhật mục lục: 27/08/2026 (lần 2 — thêm phân quyền)
 | `config.js` | URL + publishable key của Supabase (an toàn khi công khai) |
 | `styles.css` | Toàn bộ giao diện |
 | `scripts/sync.py` | **Đồng bộ SQL Server → Supabase.** Chạy: `.venv/bin/python scripts/sync.py` |
-| `scripts/build_data.py` | Đường cũ: CSV → JSON tĩnh. Giữ lại để đối chiếu, không còn dùng |
+| `scripts/build_data.py` | Đường cũ: CSV → JSON tĩnh. **Không còn chạy được** — file CSV đầu vào đã chuyển vào `obsolete/2026-08/du-lieu-cu/`. Giữ lại chỉ để đọc tham khảo |
 | `scripts/cron-supabase.sql` | Bản sao lịch tự động đang chạy trong Supabase + cách tra khi nghi lịch hỏng |
 | `scripts/phan-quyen-supabase.sql` | **ĐÃ CHẠY 27/08/2026.** Dựng bảng `app_users` (vai trò + màn hình được xem) và bảng `tasks` (việc giao dùng chung), kèm RLS. Giữ lại để dựng lại khi cần; chạy lại nhiều lần vẫn an toàn |
 | `scripts/dat-secrets.py` | Đẩy cấu hình từ `.env` lên GitHub Secrets |
@@ -27,13 +27,22 @@ Cập nhật mục lục: 27/08/2026 (lần 2 — thêm phân quyền)
 | Thư mục | Nội dung |
 |---|---|
 | `knowledge/` | **`BAN-GIAO.md` đọc trước tiên** — quyết định đã chốt, sự thật về dữ liệu, chỗ cất bí mật. Kèm lộ trình và bài học |
-| `data/` | `inventory.json` — di sản của đường cũ, sẽ gỡ khỏi git ở bước dọn dẹp |
 | `output/` | Ảnh chụp màn hình khi kiểm thử (bị .gitignore chặn) |
 | `.venv/` | Môi trường Python cho `sync.py` (bị .gitignore chặn) |
+| `obsolete/2026-08/du-lieu-cu/` | Dữ liệu cũ đã cho về hưu 27/08/2026: 2 file CSV export từ ERP (23/07, 28/07), 2 file Excel, `inventory.json`. **Giữ trên đĩa để tra, .gitignore chặn tuyệt đối** |
 
 ## Không bao giờ đưa lên GitHub
 
-`.env` · `*.csv` · `*.xlsx` · `data/*.json` — đã chặn sẵn trong `.gitignore`.
+`.env` · `*.csv` · `*.xlsx` · `data/*.json` · `test/` · `obsolete/**/du-lieu-cu/`
+— đã chặn sẵn trong `.gitignore`.
+
+**Bài học 27/08/2026:** luật trong `.gitignore` KHÔNG gỡ được file đã được git
+theo dõi từ trước. Hai file dữ liệu từng lọt vào repo dù luật đã có. Muốn chắc,
+kiểm bằng `git ls-files` chứ đừng tin vào `.gitignore`:
+
+```bash
+git ls-files | grep -iE '\.csv|\.xlsx|\.json'
+```
 Repo là **công khai**, nên mọi dữ liệu kho phải nằm trong Supabase, không nằm trong repo.
 
 ## Hạ tầng

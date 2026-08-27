@@ -78,6 +78,7 @@ giữ nguyên tắc này.
 | **hau.le@havas.vn** là quản trị viên đầu tiên | Claude đặt mặc định 27/08 | Phải có ít nhất một admin, nếu không màn hình Cấu hình không ai mở được. Đổi được trong app |
 | Ba tài khoản còn lại mặc định **member**, chưa cấp 3 màn hình quản trị | Claude đặt mặc định 27/08 | Đúng ý "có user không được xem màn hình quản trị". Quản trị viên tự cấp thêm |
 | Việc giao: **mọi member sửa được mọi việc**, chỉ người tạo và admin xoá được | Claude đề xuất 27/08 | Họp thì ai cập nhật cũng được; nhưng xoá là mất dấu nên siết hơn |
+| **KHÔNG viết lại lịch sử git** để xoá dữ liệu cũ đã từng lọt vào repo | Louis, 27/08 | Chỉ quan tâm dữ liệu đang kéo từ SQL về. Số liệu kho của tháng 7 không còn giá trị. **Claude đã nêu một lần kèm ba phương án — không nhắc lại nữa** |
 
 ---
 
@@ -183,6 +184,25 @@ không thấy số liệu kho thì **đừng cấp tài khoản** cho người �
    "sửa cột nào"; không có `grant update (…cột…)` thì một member có thể sửa
    `created_by` của việc người khác thành tên mình.
 
+### Dọn dữ liệu cũ — 27/08/2026
+
+Thư mục làm việc không còn file dữ liệu nào. Năm file (2 CSV export từ ERP,
+2 Excel, `inventory.json` — tổng 5,6 MB) đã chuyển vào
+`obsolete/2026-08/du-lieu-cu/`, giữ trên đĩa để tra nhưng `.gitignore` chặn tuyệt đối.
+
+Kéo theo: `scripts/build_data.py` **không còn chạy được** vì mất file CSV đầu vào.
+Nó là đường cũ đã ngừng dùng từ khi chuyển sang Supabase, giữ lại chỉ để đọc.
+
+Hai file dữ liệu từng **được git theo dõi** dù `.gitignore` đã có luật chặn:
+`_USE_B7R2_..._202607230935.csv` và `Báo cáo tồn kho mousse block.xlsx`.
+Cả hai đã gỡ khỏi nhánh `main`. Nguyên nhân: **`.gitignore` chỉ chặn file CHƯA
+được theo dõi** — file đã vào git rồi thì luật không có tác dụng. Từ nay kiểm bằng
+`git ls-files | grep -iE '\.csv|\.xlsx|\.json'`, đừng tin vào `.gitignore`.
+
+Cẩn thận một cái bẫy khi kiểm: tên file có dấu cách thì `git ls-files` bọc trong
+dấu nháy kép, nên `grep '\.xlsx$'` **không khớp** — chính vì vậy lần rà đầu bỏ sót
+file Excel. Bỏ dấu `$` neo cuối dòng đi.
+
 ### Việc giao không còn ở trình duyệt
 
 Bảng `tasks` trên Supabase, bật Realtime — giao xong hiện ngay trên máy người
@@ -247,34 +267,3 @@ rồi mới chạy câu SELECT thì kế hoạch mới được lập với đú
    trong `.env` và GitHub Secrets.
 7. **Tạo tài khoản mới vẫn phải vào Supabase Dashboard.** Làm được trong app thì
    cần một Edge Function giữ secret key. Chưa làm vì chỉ có 4 tài khoản.
-
-8. **CẦN ANH LOUIS QUYẾT — dữ liệu kho còn trong lịch sử git của repo public.**
-
-   Ngày 27/08/2026 phát hiện `_USE_B7R2_..._202607230935.csv` (860 KB,
-   1.996 dòng × 44 cột: mã hàng, mã kho, barcode, số lệnh SX, kích thước, số
-   lượng, trạng thái, số phiếu xuất) đang tải được công khai từ nhánh `main`,
-   không cần đăng nhập. Vào repo từ commit `0780293` ngày 23/07/2026 — **công
-   khai 35 ngày**. `.gitignore` đã có luật `*.csv` nhưng gitignore không gỡ được
-   file đã được theo dõi, nên luật đó chưa bao giờ có tác dụng với file này.
-
-   Commit `367df61` đã gỡ nó khỏi nhánh `main` (API xác nhận 404). **Nhưng lịch
-   sử git vẫn còn**, và GitHub công khai toàn bộ danh sách commit — nên bất kỳ
-   ai mở commit `0780293` vẫn tải được đủ file. Coi như vẫn công khai.
-
-   | Cách | Được | Mất |
-   |---|---|---|
-   | **A. Để nguyên** | Không phải làm gì. Đúng tiền lệ đã chốt cho dữ liệu tháng 7 | Dữ liệu 23/07 vẫn tải được vô thời hạn. Chi tiết hơn nhiều so với ảnh chụp tháng 7 |
-   | **B. Viết lại lịch sử** (`git filter-repo` + force push, rồi nhờ GitHub Support xoá cache) | Đóng hẳn lỗ này | Mọi mã commit sau `0780293` đổi hết — các chỗ tài liệu đang trích `74da37a`, `193da01` sẽ trỏ sai |
-   | **C. Chuyển repo sang private** | Đóng hẳn, không phải viết lại lịch sử | GitHub Pages trên repo private cần bản trả phí → phá điều kiện 0đ/tháng |
-
-   Claude đề xuất **B**: đây là cách duy nhất thật sự đóng lỗ, và cái mất chỉ là
-   sửa lại vài mã commit trong tài liệu. Nhưng đây là quyết định của anh Louis —
-   tiền lệ tháng 7 cho thấy anh có thể chọn A một cách có ý thức.
-
-   Lưu ý phân biệt với tiền lệ ở mục 4: dữ liệu tháng 7 là **ảnh chụp tồn kho đã
-   tổng hợp** (`data/inventory.json`), còn file này là **dữ liệu thô 44 cột từ
-   ERP**, gồm cả số lệnh sản xuất và số phiếu xuất.
-
-**Đã bỏ, đừng làm lại:** chia lại dải tuổi tồn. Lý do ban đầu (dồn cục vào 2 dải)
-đã tự biến mất; 4 dải đang dùng đều có số liệu, 2 dải cuối rỗng là **thông tin
-đúng** và còn hữu ích để bắt hàng tồn lâu về sau.
