@@ -3,7 +3,7 @@
 Dashboard tồn kho mousse block cho ban giám đốc. Dữ liệu kéo tự động từ SQL Server
 của ERP, lưu tại Supabase, hiển thị bằng trang tĩnh trên GitHub Pages.
 
-Cập nhật mục lục: 26/08/2026
+Cập nhật mục lục: 27/08/2026
 
 ## File sống (đang chạy)
 
@@ -25,7 +25,7 @@ Cập nhật mục lục: 26/08/2026
 
 | Thư mục | Nội dung |
 |---|---|
-| `knowledge/` | Lộ trình triển khai, bài học rút ra sau mỗi vòng |
+| `knowledge/` | **`BAN-GIAO.md` đọc trước tiên** — quyết định đã chốt, sự thật về dữ liệu, chỗ cất bí mật. Kèm lộ trình và bài học |
 | `data/` | `inventory.json` — di sản của đường cũ, sẽ gỡ khỏi git ở bước dọn dẹp |
 | `output/` | Ảnh chụp màn hình khi kiểm thử (bị .gitignore chặn) |
 | `.venv/` | Môi trường Python cho `sync.py` (bị .gitignore chặn) |
