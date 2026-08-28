@@ -62,7 +62,7 @@ create table if not exists public.app_users (
   -- khoản) — đó là ba màn hình quản trị, quản trị viên cấp thêm khi cần.
   allowed_pages text[] not null default array[
     'guide', 'overview', 'warehouse', 'product', 'customer',
-    'aging', 'status', 'actions', 'details', 'workflow'
+    'aging', 'status', 'details', 'workflow'
   ],
   is_active     boolean not null default true,
   created_at    timestamptz not null default now(),
@@ -382,6 +382,14 @@ create policy login_log_read on public.login_log
 update public.app_users
    set allowed_pages = array_append(allowed_pages, 'customer')
  where not ('customer' = any(allowed_pages));
+
+-- Màn hình "Phương án xử lý" bỏ ngày 28/08/2026 theo yêu cầu anh Louis.
+-- Để 'actions' nằm lại trong allowed_pages thì vô hại (thanh điều hướng chỉ
+-- duyệt những trang có thật), nhưng là rác — và sẽ tự sống lại nếu sau này có
+-- ai đặt lại một trang trùng tên.
+update public.app_users
+   set allowed_pages = array_remove(allowed_pages, 'actions')
+ where 'actions' = any(allowed_pages);
 
 
 -- =====================================================================

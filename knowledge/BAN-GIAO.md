@@ -83,6 +83,7 @@ giữ nguyên tắc này.
 | **hau.le@havas.vn** là quản trị viên đầu tiên | Claude đặt mặc định 27/08 | Phải có ít nhất một admin, nếu không màn hình Cấu hình không ai mở được. Đổi được trong app |
 | Ba tài khoản còn lại mặc định **member**, chưa cấp 3 màn hình quản trị | Claude đặt mặc định 27/08 | Đúng ý "có user không được xem màn hình quản trị". Quản trị viên tự cấp thêm |
 | Việc giao: **mọi member sửa được mọi việc**, chỉ người tạo và admin xoá được | Claude đề xuất 27/08 | Họp thì ai cập nhật cũng được; nhưng xoá là mất dấu nên siết hơn |
+| **Bỏ màn hình "Phương án xử lý"** | Louis, 28/08 | Thấy không cần thiết. Nội dung của nó đã có ở nơi khác: khối "Gợi ý cho cuộc họp kho" vẫn nằm trong Tổng quan và Tuổi tồn |
 | **Phương án B** cho màn hình Theo khách hàng: gộp tên khách theo luật, nhưng công khai luật + cho xem nguyên văn | Louis, 28/08 | Giữ nguyên văn thì ra 59 nhóm lẫn lộn, không dùng được. Gộp mà giấu thì phá nguyên tắc trung thực. B là đường giữa |
 | **KHÔNG viết lại lịch sử git** để xoá dữ liệu cũ đã từng lọt vào repo | Louis, 27/08 | Chỉ quan tâm dữ liệu đang kéo từ SQL về. Số liệu kho của tháng 7 không còn giá trị. **Claude đã nêu một lần kèm ba phương án — không nhắc lại nữa** |
 
@@ -305,7 +306,27 @@ chưa đủ chắc là khách hàng.
 
 ---
 
-## 9. Còn treo
+## 9. Đã bỏ — đừng dựng lại nếu không có lý do mới
+
+**Màn hình "Phương án xử lý"** (`actions`) — bỏ 28/08/2026 theo yêu cầu anh Louis.
+
+Gỡ kèm hai hàm chỉ nó dùng: `productRiskTable()` và `warehouseQuestions()`.
+Muốn lấy lại thì lịch sử git còn nguyên, xem commit ngay trước lần bỏ.
+
+**GIỮ LẠI, đừng gỡ nhầm theo:**
+
+| Thứ | Vì sao vẫn cần |
+|---|---|
+| `actionsList()` | Trang Tổng quan và Tuổi tồn vẫn gọi — đó là khối "Gợi ý cho cuộc họp kho" |
+| `movementChart()` | Trang Tổng quan vẫn gọi |
+| `icons.actions` | Không còn là icon màn hình, nhưng vẫn là icon thẻ số ở Luồng công việc và Theo khách hàng |
+
+Đã gỡ `'actions'` khỏi `allowed_pages` của cả 4 tài khoản và khỏi `default` của
+cột. Để lại thì vô hại nhưng là rác, và sẽ tự sống lại nếu sau này có trang trùng tên.
+
+---
+
+## 10. Còn treo
 
 **Câu hỏi nghiệp vụ — quan trọng hơn mọi tính năng:**
 

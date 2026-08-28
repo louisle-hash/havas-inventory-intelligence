@@ -164,3 +164,15 @@ tự do, và chỉ quy được **52,9%** khối lượng kho về một khách.
 - **Bài kiểm thử ghi cứng con số sẽ hỏng khi thêm tính năng.** "Xem được 9 màn
   hình nghiệp vụ" hỏng ngay khi có màn hình thứ 10. Cho phép đo tự tính từ
   `pageConfig` thay vì ghi số.
+
+**Bỏ một màn hình (28/08/2026) — rule rút ra:**
+
+- **Gỡ màn hình thì phải tra hàm nào dùng CHUNG trước.** `actionsList()` trông
+  như của riêng màn hình "Phương án xử lý" vì trùng tên, nhưng Tổng quan và Tuổi
+  tồn cũng gọi nó. `icons.actions` cũng vậy — không còn là icon màn hình nhưng
+  vẫn là icon thẻ số ở hai nơi. Xoá theo tên là gãy hai trang khác.
+- **Gỡ màn hình cũng phải gỡ quyền của màn hình đó.** Để `'actions'` nằm lại
+  trong `allowed_pages` thì vô hại hôm nay, nhưng sẽ tự sống lại nếu sau này có
+  ai đặt một trang trùng tên.
+- **Đổi xong thì bấm thử TẤT CẢ các trang còn lại**, không chỉ trang vừa đụng.
+  Mười hai trang, mất mười giây, bắt được lỗi mà kiểm thử đơn vị không thấy.

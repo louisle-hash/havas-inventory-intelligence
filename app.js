@@ -67,12 +67,6 @@ const pageConfig = {
     description: "Tách rõ SX theo đơn hàng, SX dư và nhóm chưa xác định, sau đó đào sâu qua Remark và Remark 1.",
     kicker: "Trạng thái nghiệp vụ",
   },
-  actions: {
-    label: "Phương án xử lý",
-    title: "Gợi ý phối hợp xử lý",
-    description: "Tổng hợp dữ liệu kho thành các nội dung để đội ngũ cùng trao đổi trong cuộc họp.",
-    kicker: "Gợi ý phối hợp",
-  },
   details: {
     label: "Chi tiết block",
     title: "Tra cứu block mousse đang tồn",
@@ -124,6 +118,8 @@ const icons = {
   customer: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20a6 6 0 0112 0"/><path d="M16.5 5.5a3 3 0 010 5.4M18.5 20a6.4 6.4 0 00-2.2-4.6"/></svg>',
   aging: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   status: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h8"/><circle cx="18" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>',
+  // Không còn màn hình "Phương án xử lý" (bỏ 28/08/2026) nhưng biểu tượng này
+  // vẫn được dùng làm icon thẻ số ở Luồng công việc và Theo khách hàng.
   actions: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4l8 4v8l-8 4-8-4V8z"/><path d="M9 12l2 2 4-4"/></svg>',
   workflow: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h7"/><path d="M16 12l1.5 1.5L20 11"/></svg>',
   logs: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 012 2v14H8z"/><path d="M5 7v11a2 2 0 002 2M11 9h5M11 13h5M11 17h3"/></svg>',
@@ -799,18 +795,6 @@ function remarkTable(rows, key, label) {
   </tbody></table></div>`;
 }
 
-function actionsPage(rows = state.filtered) {
-  return `<div class="actions-dashboard">
-    <div class="actions-column actions-column-main">
-      ${panel("Sản phẩm nổi bật để cùng rà soát", "Xếp theo quy mô tồn và mức độ đầy đủ của thông tin trạng thái", productRiskTable(rows))}
-      ${panel("Nhịp nhập xuất kho gần nhất", "Đối chiếu m³, số block và chênh lệch ròng", movementChart(), "ReceiptDate / DeliveryDate")}
-    </div>
-    <div class="actions-column actions-column-support">
-      ${panel("Các nhóm nên cùng xem xét", "Tổng hợp những nội dung hữu ích cho cuộc họp và lý do", actionsList(rows))}
-      ${panel("Góc nhìn theo kho", "Gợi ý nội dung để các bộ phận cùng trao đổi", warehouseQuestions(rows))}
-    </div>`;
-}
-
 function taskDueState(task) {
   if (task.status === "Hoàn thành") return "done";
   // Mốc so hạn phải là NGÀY THẬT HÔM NAY. Trước đây dùng state.reportDate nên
@@ -895,29 +879,6 @@ function taskTable(tasks) {
       </tr>`;
     }).join("")}
   </tbody></table></div>`;
-}
-
-function productRiskTable(rows) {
-  const items = productGroups(rows).map(item => ({
-    ...item,
-    risk: item.statusLead === "Chưa xác định" ? 3 : item.statusLead === "SX dư" ? 2 : 1,
-  })).sort((a, b) => b.risk - a.risk || b.volume - a.volume).slice(0, 10);
-  return `<div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Màu</th><th>Kho</th><th>m3 tồn</th><th>Tuổi TB</th><th>Trạng thái dẫn dắt</th></tr></thead><tbody>
-    ${items.map(item => `<tr class="interactive-row" data-product="${escapeAttr(item.productFull)}"><td>${escapeHtml(item.product)}</td><td>${item.color}</td><td>${item.warehouseMix}</td><td class="numeric" data-sort-value="${item.volume}">${formatNumber(item.volume, 1)} m³</td><td class="numeric" data-sort-value="${item.age}">${formatNumber(item.age, 0)} ngày</td><td>${badge(item.statusLead)}</td></tr>`).join("")}
-  </tbody></table></div>`;
-}
-
-function warehouseQuestions(rows) {
-  const blocks = unique(rows.map(row => row.warehouse)).map(warehouse => {
-    const items = rows.filter(row => row.warehouse === warehouse);
-    const role = items[0]?.warehouseRole || "Kho";
-    const topStatus = dominant(items, "status");
-    return `<div class="question-card">
-      <strong>${warehouse} · ${role}</strong>
-      <p>Tồn chủ đạo hiện là <b>${topStatus}</b> với ${formatNumber(sum(items, "closeVolume"), 1)} m³. Đội ngũ có thể cùng làm rõ nguyên nhân tồn, mức độ gắn với đơn hàng và phương án phù hợp.</p>
-    </div>`;
-  });
-  return `<div class="question-list">${blocks.join("")}</div>`;
 }
 
 function detailsPage(rows = state.filtered) {
@@ -1370,7 +1331,6 @@ function renderPage() {
     customer: customerPage,
     aging: agingPage,
     status: statusPage,
-    actions: actionsPage,
     details: detailsPage,
     workflow: workflowPage,
     logs: logsPage,
