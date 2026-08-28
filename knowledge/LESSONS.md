@@ -176,3 +176,31 @@ tự do, và chỉ quy được **52,9%** khối lượng kho về một khách.
   ai đặt một trang trùng tên.
 - **Đổi xong thì bấm thử TẤT CẢ các trang còn lại**, không chỉ trang vừa đụng.
   Mười hai trang, mất mười giây, bắt được lỗi mà kiểm thử đơn vị không thấy.
+
+---
+
+## 28/08/2026 — Rà soát trùng lặp biểu đồ
+
+**Rule rút ra:**
+
+- **So trùng bằng cách so NGUYÊN VĂN thứ app dựng ra, đừng so bằng mắt.** Hai
+  khối tên khác nhau ở hai màn hình khác nhau hoá ra giống nhau từng ký tự. Nhìn
+  tiêu đề thì không bao giờ phát hiện được.
+- **Nguy hiểm hơn trùng lặp là cùng một tên hai con số.** "SX dư" hiện 324,7 m³
+  ở màn hình này và 201,2 m³ ở màn hình kia vì một bên lọc sẵn `>30 ngày` mà
+  không nói. Trùng lặp làm người dùng chán; mâu thuẫn làm người dùng mất tin.
+- **Tên khối phải khớp với thứ hàm thực sự vẽ.** `heatmap()` chia theo trạng
+  thái, nhưng được đặt tên "Tồn theo tuổi trong từng kho". Đọc tiêu đề mà không
+  đọc hàm là bỏ lọt.
+- **Một chiều phân tích chỉ còn một giá trị thì nó không còn là chiều phân
+  tích.** Cả màn hình "Theo kho" và ô lọc Kho đều vô nghĩa khi chỉ có TP20. Cho
+  **tự ẩn theo dữ liệu** thay vì xoá — có kho thứ hai là tự sống lại, không cần
+  ai nhớ bật.
+- **Trước khi thêm chỉ số mới, hãy xem dữ liệu đã có gì chưa dùng.** Bảng
+  `snapshots` giữ số tổng hợp mỗi ngày từ lâu mà chỉ Nhật ký đọc tới. "So với
+  hôm qua" không cần thêm một dòng dữ liệu nào.
+- **Số tổng hợp sẵn KHÔNG đi qua bộ lọc — phải chặn khi người dùng đang lọc.**
+  So một con số đã lọc với một con số chưa lọc ra kết quả sai mà nhìn vẫn hợp lý.
+  Đó là loại lỗi không ai phát hiện.
+- **Mũi tên tăng giảm nên để trung tính khi dữ liệu không nói tốt xấu.** Tồn kho
+  tăng không hẳn tốt. Tô xanh/đỏ là áp phán xét mà số liệu không có.

@@ -10,7 +10,7 @@ Cập nhật mục lục: 27/08/2026 (lần 2 — thêm phân quyền)
 | File | Vai trò |
 |---|---|
 | `index.html` | Khung app: màn hình đăng nhập + vỏ dashboard |
-| `app.js` | Toàn bộ logic dashboard, 12 màn hình, đọc dữ liệu từ Supabase. Gồm cả phân quyền, việc giao và phân tích khách hàng |
+| `app.js` | Toàn bộ logic dashboard, 12 màn hình (màn hình "Theo kho" tự ẩn khi chỉ có một kho có tồn), đọc dữ liệu từ Supabase. Gồm cả phân quyền, việc giao và phân tích khách hàng |
 | `auth.js` | Đăng nhập/đăng xuất qua Supabase Auth, chặn app khi chưa đăng nhập |
 | `config.js` | URL + publishable key của Supabase (an toàn khi công khai) |
 | `styles.css` | Toàn bộ giao diện |
@@ -64,5 +64,5 @@ Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt 
 4. ~~Chạy `scripts/phan-quyen-supabase.sql` trên Supabase~~ — xong 27/08/2026, đã nghiệm
    thu RLS, bảng kết quả ở `knowledge/BAN-GIAO.md` mục 7
 5. Cấp thêm màn hình quản trị cho ai cần — làm ngay trong app, màn hình **Cấu hình tài khoản**
-6. Xác nhận `SST` là khách hàng hay mã nội bộ (xem `knowledge/BAN-GIAO.md` mục 10)
+6. Xác nhận `SST` là khách hàng hay mã nội bộ (xem `knowledge/BAN-GIAO.md` mục 11)
 7. Đề nghị kho chốt danh mục khách hàng trong ERP — 21% tồn đang không ghi mã đơn

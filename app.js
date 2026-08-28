@@ -689,6 +689,67 @@ function guidePage() {
   `;
 }
 
+// ==========================================================================
+// SO SÁNH VỚI NGÀY TRƯỚC
+//
+// Số so sánh lấy từ bảng snapshots — là số TOÀN KHO, không đi qua bộ lọc.
+// Vì vậy mũi tên chênh lệch trên thẻ số chỉ hiện khi KHÔNG lọc gì; nếu không
+// sẽ so một con số đã lọc với một con số chưa lọc, ra kết quả vô nghĩa.
+// ==========================================================================
+
+const khongLoc = () =>
+  Object.entries(state.filters).every(([k, v]) => (k === "size" ? !v : v === "all"));
+
+function chipChenh(homNay, homQua, dinhDang) {
+  if (homQua == null || homNay == null) return "";
+  const d = Number(homNay) - Number(homQua);
+  if (Math.abs(d) < 0.05) return '<span class="delta-chip is-flat">không đổi</span>';
+  const huong = d > 0 ? "up" : "down";
+  const mui = d > 0 ? "▲" : "▼";
+  return `<span class="delta-chip is-${huong}">${mui} ${dinhDang(Math.abs(d))}</span>`;
+}
+
+// Mũi tên chỉ có nghĩa khi đang xem toàn bộ kho.
+function chenhTheoAnhChup(truong, dinhDang) {
+  if (!khongLoc()) return "";
+  const a = state.data?.snapshot?.[truong];
+  const b = state.data?.snapshotTruoc?.[truong];
+  return chipChenh(a, b, dinhDang);
+}
+
+const CHI_SO_SO_NGAY = [
+  ["Dung tích tồn", "total_volume", v => `${formatNumber(v, 1)} m³`],
+  ["Số block", "total_units", v => `${formatNumber(v, 0)} block`],
+  ["Tuổi tồn bình quân", "avg_age_days", v => `${formatNumber(v, 1)} ngày`],
+  ["SX theo đơn hàng", "volume_ordered", v => `${formatNumber(v, 1)} m³`],
+  ["SX dư", "volume_surplus", v => `${formatNumber(v, 1)} m³`],
+  ["Tồn trên 60 ngày", "volume_over_60d", v => `${formatNumber(v, 1)} m³`],
+  ["Block có ghi lỗi", "defect_blocks", v => `${formatNumber(v, 0)} block`],
+  ["Top 5 sản phẩm chiếm", "top5_share_pct", v => `${formatNumber(v, 1)}%`],
+];
+
+function soVoiHomQua() {
+  const nay = state.data?.snapshot;
+  const qua = state.data?.snapshotTruoc;
+  if (!nay) return '<div class="empty-state"><strong>Chưa có ảnh chụp nào</strong><span>Cần chạy scripts/sync.py trước.</span></div>';
+  if (!qua) {
+    return `<div class="empty-state"><strong>Mới có một ngày dữ liệu</strong>
+      <span>Chưa so được với ngày trước. Từ lượt đồng bộ ngày mai, khối này sẽ tự có số.</span></div>`;
+  }
+  const ngay = d => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(`${d}T00:00:00`));
+  return `<div class="table-wrap"><table class="so-ngay"><thead><tr>
+      <th>Chỉ số</th><th>${ngay(qua.report_date)}</th><th>${ngay(nay.report_date)}</th><th>Thay đổi</th>
+    </tr></thead><tbody>
+    ${CHI_SO_SO_NGAY.map(([nhan, truong, dd]) => `<tr>
+      <td>${nhan}</td>
+      <td class="numeric">${qua[truong] == null ? "—" : dd(qua[truong])}</td>
+      <td class="numeric"><strong>${nay[truong] == null ? "—" : dd(nay[truong])}</strong></td>
+      <td class="numeric">${chipChenh(nay[truong], qua[truong], dd)}</td>
+    </tr>`).join("")}
+  </tbody></table></div>
+  <p class="so-ngay-nhac">Đây là số <strong>toàn kho</strong>, không đi qua bộ lọc ở trên. Ảnh chụp được ghi mỗi lượt đồng bộ.</p>`;
+}
+
 function overviewPage(rows = state.filtered) {
   const oldest = [...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0))[0];
   const topProducts = productGroups(rows).sort((a, b) => b.volume - a.volume).slice(0, 5).map(item => ({
@@ -699,9 +760,9 @@ function overviewPage(rows = state.filtered) {
   }));
   return `
     <section class="kpi-grid">
-      ${kpiCard("Block đang tồn", `${formatNumber(sum(rows, "closeUnits"), 0)}`, `${formatNumber(rows.length, 0)} dòng tồn dương`, "blocks", "brand")}
-      ${kpiCard("Dung tích đang giữ", `${formatNumber(sum(rows, "closeVolume"), 1)} m³`, `${formatNumber(productGroups(rows).length, 0)} sản phẩm màu`, "volume", "info")}
-      ${kpiCard("Tuổi tồn bình quân", `${formatNumber(weightedAge(rows), 0)} ngày`, "Tính theo ngày nhập của lượng tồn hiện tại", "clock", "warning")}
+      ${kpiCard("Block đang tồn", `${formatNumber(sum(rows, "closeUnits"), 0)}`, `${chenhTheoAnhChup("total_units", v => `${formatNumber(v, 0)} block`)}${formatNumber(rows.length, 0)} dòng tồn dương`, "blocks", "brand")}
+      ${kpiCard("Dung tích đang giữ", `${formatNumber(sum(rows, "closeVolume"), 1)} m³`, `${chenhTheoAnhChup("total_volume", v => `${formatNumber(v, 1)} m³`)}${formatNumber(productGroups(rows).length, 0)} sản phẩm màu`, "volume", "info")}
+      ${kpiCard("Tuổi tồn bình quân", `${formatNumber(weightedAge(rows), 0)} ngày`, `${chenhTheoAnhChup("avg_age_days", v => `${formatNumber(v, 1)} ngày`)}Tính theo ngày nhập của lượng tồn hiện tại`, "clock", "warning")}
       ${kpiCard("Block lâu nhất", oldest ? `${oldest.daysInStock || 0} ngày` : "—", oldest ? `${oldest.productFull} · ${oldest.warehouse}` : "Không có dữ liệu", "flow", "success")}
     </section>
     <div class="dashboard-grid overview-primary-grid">
@@ -712,20 +773,48 @@ function overviewPage(rows = state.filtered) {
       </div>
     </div>
     <div class="dashboard-grid overview-secondary-grid">
-      <div class="overview-side-stack">
-        ${panel("Cơ cấu tuổi tồn", "Nhìn nhanh vùng ổn định và vùng nên quan tâm thêm", stackedDistribution(ageDistribution(rows), "age"), `${formatNumber(sum(rows.filter(row => row.daysInStock > 60), "closeVolume"), 1)} m³ trên 60 ngày`)}
-        ${panel("Tuổi tồn theo màu", "Màu nào đang có tuổi bình quân cao hơn", ageByColorChart(rows), "Theo m³ tồn")}
-      </div>
+      ${panel("So với hôm qua", "Số toàn kho lấy từ ảnh chụp cuối mỗi ngày", soVoiHomQua(), state.data?.snapshotTruoc ? "" : "chờ đủ 2 ngày", "table-panel")}
       ${panel("Gợi ý cho cuộc họp kho", "Các nhóm đội ngũ có thể cùng xem xét và thống nhất phương án", actionsList(rows))}
     </div>
   `;
 }
 
+// Màn hình này TỰ ẨN khi chỉ còn một kho có tồn (xem trangDuocXem).
+//
+// Bản cũ có hai lỗi, sửa 28/08/2026 khi rà soát trùng lặp:
+//   1. Khối tên "Tồn theo tuổi trong từng kho" gọi heatmap(rows) — mà heatmap()
+//      chia theo TRẠNG THÁI × tuổi, không phải kho. Tên hứa một đằng, vẽ một nẻo,
+//      và kết quả trùng từng ký tự với khối "Tuổi tồn x trạng thái" ở trang Tuổi tồn.
+//   2. Khối "Tuổi theo màu" trùng từng ký tự với khối cùng nội dung ở nơi khác.
+// Giờ cả hai khối đều thật sự chia theo kho — thứ mà không trang nào khác có.
 function warehousePage(rows = state.filtered) {
+  const dai = ["0–7 ngày", "8–30 ngày", "31–60 ngày", "61–90 ngày", "91–180 ngày", ">180 ngày", "Thiếu ngày nhập"];
+  const khos = unique(rows.map(r => r.warehouse).filter(Boolean));
+  const oGiaTri = (k, d) => sum(rows.filter(r => r.warehouse === k && r.ageBucket === d), "closeVolume");
+  const cot = dai.filter(d => khos.some(k => oGiaTri(k, d) > 0));
+  const max = Math.max(...khos.flatMap(k => cot.map(d => oGiaTri(k, d))), 1);
+
   return `<div class="warehouse-grid">${warehouseCards(rows)}</div>
     <div class="dashboard-grid section-gap">
-      ${panel("Tồn theo tuổi trong từng kho", "Hỗ trợ trao đổi đúng trọng tâm tại từng kho", heatmap(rows))}
-      ${panel("Tuổi theo màu", "Màu nào đang có tuổi tồn bình quân cao hơn", ageByColorChart(rows), "Tuổi TB theo m³")}
+      ${panel("Kho × Tuổi tồn", "Kho nào đang giữ hàng nằm lâu", `<div class="heatmap-wrap">
+        <div class="khach-luoi" style="grid-template-columns:minmax(110px,1.2fr) repeat(${cot.length || 1},minmax(64px,1fr))">
+          <div></div>${cot.map(d => `<div class="heatmap-head">${d}</div>`).join("")}
+          ${khos.map(k => `<div class="heatmap-row-label" title="${escapeAttr(k)}">${escapeHtml(k)}</div>${cot.map(d => {
+            const v = oGiaTri(k, d);
+            return `<button class="heatmap-cell" ${v ? `data-drill-type="warehouse" data-drill-value="${escapeAttr(k)}"` : "disabled"} style="--heat:${v ? 0.08 + v / max * 0.82 : 0}"><strong>${v ? formatNumber(v, 1) : "—"}</strong></button>`;
+          }).join("")}`).join("")}
+        </div></div><p class="luoi-chu-thich">Số trong ô là m³.</p>`, `${khos.length} kho`)}
+      ${panel("Kho × Trạng thái", "Cơ cấu trạng thái trong từng kho", `<div class="khach-trangthai">
+        ${khos.map(k => {
+          const r = rows.filter(x => x.warehouse === k);
+          const tong = sum(r, "closeVolume") || 1;
+          return `<div class="khach-tt-row">
+            <span class="khach-tt-ten" title="${escapeAttr(k)}">${escapeHtml(k)}</span>
+            <span class="khach-tt-bar">${statusDistribution(r).filter(x => x.value > 0).map(x => `<i style="width:${x.value / tong * 100}%;background:${x.color}" title="${x.label}: ${formatNumber(x.value, 1)} m³"></i>`).join("")}</span>
+            <b>${formatNumber(tong, 1)} m³</b></div>`;
+        }).join("")}
+        <div class="legend-list">${statusDistribution(rows).filter(x => x.value > 0).map(x => `<span class="legend-row"><span class="legend-swatch" style="background:${x.color}"></span><span class="legend-name">${x.label}</span></span>`).join("")}</div>
+      </div>`)}
     </div>`;
 }
 
@@ -739,7 +828,10 @@ function productPage(rows = state.filtered) {
   }));
   return `<div class="dashboard-grid">
       ${panel("Sản phẩm giữ nhiều dung tích nhất", "Xếp hạng theo m³ tồn; nhấn để mở phân tích chi tiết", rankChart(topProducts))}
-      ${panel("Màu sắc đang tồn", "Cơ cấu dung tích, số sản phẩm và số block theo màu", colorInventoryChart(rows))}
+      <div class="side-stack">
+        ${panel("Màu sắc đang tồn", "Cơ cấu dung tích, số sản phẩm và số block theo màu", colorInventoryChart(rows))}
+        ${panel("Tuổi tồn theo màu", "Màu nào đang có tuổi bình quân cao hơn", ageByColorChart(rows), "Theo m³ tồn")}
+      </div>
     </div>
     ${panel("Hiệu quả theo sản phẩm", "Chọn một dòng để mở hồ sơ phân tích chi tiết", productTable(rows), `${formatNumber(productGroups(rows).length, 0)} sản phẩm màu`, "table-panel")}`;
 }
@@ -750,10 +842,7 @@ function agingPage(rows = state.filtered) {
       ${panel("Tồn theo nhóm tuổi", "Cột thể hiện m³ và tỷ trọng tồn trong từng dải tuổi", ageBucketChart(rows), "Theo ReceiptDate")}
       ${panel("Tuổi tồn x trạng thái", "Nhấn từng ô để xem sản phẩm nào nằm trong vùng đó", heatmap(rows))}
     </div>
-    <div class="dashboard-grid equal">
-      ${panel("Danh sách block có tuổi tồn cao", "Hỗ trợ đội ngũ cùng xem xét các nhóm tồn lâu", detailsTable([...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0)).slice(0, 12)), "", "table-panel")}
-      ${panel("Gợi ý theo tuổi tồn", "Mỗi nhóm tuổi tồn có thể phù hợp với một phương án khác nhau", actionsList(rows.filter(row => row.daysInStock > 30)))}
-    </div>`;
+    ${panel("Danh sách block có tuổi tồn cao", "Hỗ trợ đội ngũ cùng xem xét các nhóm tồn lâu", detailsTable([...rows].sort((a, b) => (b.daysInStock || 0) - (a.daysInStock || 0)).slice(0, 12)), "", "table-panel")}`;
 }
 
 function statusPage(rows = state.filtered) {
@@ -1361,6 +1450,8 @@ function populateFilters() {
   }
   if (daDon) toast("Một số giá trị đang lọc không còn trong dữ liệu mới — đã bỏ lọc đó.");
 
+  // Ô lọc chỉ có đúng một lựa chọn thật thì không phải bộ lọc, chỉ là nhiễu.
+  els.warehouseFilter.closest("label").hidden = warehouses.length < 2;
   els.warehouseFilter.innerHTML = `<option value="all">Tất cả kho</option>${optionsMarkup(warehouses, state.filters.warehouse)}`;
   els.productFilter.innerHTML = `<option value="all">Tất cả sản phẩm</option>${optionsMarkup(products, state.filters.product)}`;
   els.colorFilter.innerHTML = `<option value="all">Tất cả màu</option>${optionsMarkup(colors, state.filters.color)}`;
@@ -1887,12 +1978,22 @@ const VAI_TRO = {
 };
 
 const laQuanTri = () => state.profile?.role === "admin" && state.profile?.is_active !== false;
+
+// Đo trên dữ liệu thật, không đọc từ danh sách kho cứng trong WAREHOUSE_META.
+// Tính tới 28/08/2026 chỉ TP20 từng có tồn — TP24NEM chưa xuất hiện lần nào,
+// kể cả trong 6.528 sự kiện nhập xuất từ 1/1/2025.
+const nhieuKho = () => unique(state.records.map(r => r.warehouse).filter(Boolean)).length > 1;
 const duocSuaViec = () => ["admin", "member"].includes(state.profile?.role) && state.profile?.is_active !== false;
 
 function trangDuocXem(key) {
   // Hướng dẫn luôn mở: phải còn ít nhất một lối vào, nếu không người bị thu hết
   // quyền sẽ nhìn thấy màn hình trắng và không hiểu chuyện gì đang xảy ra.
   if (key === "guide") return true;
+  // Chỉ còn một kho có tồn thì màn hình "Theo kho" không nói được gì: mọi con
+  // số của nó đúng bằng số toàn kho ở trang Tổng quan. Ẩn đi thay vì xoá — nếu
+  // sau này TP24NEM (hoặc kho mới) có hàng, màn hình tự hiện lại.
+  // Kiểm TRƯỚC nhánh quản trị viên, vì quản trị viên cũng không cần thấy nó.
+  if (key === "warehouse" && !nhieuKho()) return false;
   // Màn hình Cấu hình tài khoản đi theo VAI TRÒ, không theo ô tick. Nếu để nó
   // nằm trong allowed_pages thì hạ một quản trị viên xuống member xong, ô đó
   // vẫn còn tick — họ thấy mục ở thanh bên rồi bấm vào lại bị từ chối.
@@ -2502,8 +2603,11 @@ function mapMovement(row) {
 }
 
 async function loadFromSupabase() {
+  // Lấy HAI ngày gần nhất, không phải một: ngày trước dùng để tính thay đổi
+  // trên trang Tổng quan. Bảng snapshots đã có sẵn số tổng hợp theo ngày,
+  // trước 28/08/2026 chỉ màn hình Nhật ký dùng tới.
   const { data: snapshots, error } = await window.supabase
-    .from("snapshots").select("*").order("report_date", { ascending: false }).limit(1);
+    .from("snapshots").select("*").order("report_date", { ascending: false }).limit(2);
   if (error) throw new Error(`Không đọc được snapshots: ${error.message}`);
   if (!snapshots.length) throw new Error("Chưa có dữ liệu nào trong Supabase. Cần chạy scripts/sync.py trước.");
 
@@ -2532,6 +2636,7 @@ async function loadFromSupabase() {
   return {
     meta: { reportDate, source: "Supabase", generatedAt: runRows[0]?.finished_at || null },
     snapshot,
+    snapshotTruoc: snapshots[1] || null,
     lastRun: runRows[0] || null,
     records,
     rawRecords,

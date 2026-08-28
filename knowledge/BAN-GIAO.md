@@ -57,9 +57,10 @@ giữ nguyên tắc này.
 | Không dòng nào thiếu kích thước | 0/3.183 |
 | `@_DocDate1` **KHÔNG** ảnh hưởng tồn kho, chỉ `@_DocDate2` | chạy A/B 1 tháng vs 19 tháng → giống hệt |
 | Tồn "trên 90 ngày = 0" là **ĐÚNG**, không phải lỗi | block cũ nhất 83 ngày; kho quay vòng nhanh |
+| **Chỉ TP20 từng có tồn** — TP24NEM chưa xuất hiện lần nào | 3 ngày ảnh chụp tồn + 6.528 sự kiện nhập xuất từ 1/1/2025 |
 | SQL Server **mở ra Internet** | GitHub Actions ở nước ngoài kết nối được, 1.984ms |
 | Thời gian chạy proc **dao động 4–152 giây** | cùng truy vấn, cùng tham số → timeout để 600s |
-| 44% block **không có mã vị trí kho** | chặn mọi tính năng "đi lấy hàng" |
+| **59% block không có mã vị trí kho** (62,9% theo m³) | 364/617 block ngày 28/08. Trước ghi 44% — đang xấu đi. Chặn mọi tính năng "đi lấy hàng" |
 | `Remark` = mã đơn/lệnh SX, **không phải** trạng thái phụ | `SST-179--Mousse tấm`, `WB2604-0029` |
 | `Remark1` = tình trạng lỗi, nhập tự do | 14 loại lỗi hiển thị thành 15 vì khác cách gõ |
 | **ERP KHÔNG có cột khách hàng** | Kiểm cả 44 cột stored procedure trả về; các cột `sync.py` bỏ đều là cột cấu trúc hoặc trùng |
@@ -306,7 +307,51 @@ chưa đủ chắc là khách hàng.
 
 ---
 
-## 9. Đã bỏ — đừng dựng lại nếu không có lý do mới
+## 9. Rà soát trùng lặp biểu đồ — 28/08/2026
+
+Anh Louis yêu cầu rà xem số liệu có bị lặp gây lan man không. Rà bằng ba cách:
+đọc mã cả 12 màn hình, **so nguyên văn HTML** hai khối nghi trùng, và đối chiếu
+số thật trên app đang chạy.
+
+### Tìm được gì
+
+| Mức | Vấn đề | Bằng chứng |
+|---|---|---|
+| **Nặng nhất** | Cùng một tên thẻ, hai con số khác nhau | "Rà soát nhóm SX dư" hiện **113 block · 324,7 m³** ở Tổng quan nhưng **75 block · 201,2 m³** ở Tuổi tồn — vì Tuổi tồn lọc sẵn `>30 ngày` mà không nói ra |
+| Nặng | Một biểu đồ đặt sai tên | "Tồn theo tuổi trong từng kho" gọi `heatmap()` — hàm này chia theo **trạng thái**, không phải kho |
+| Nặng | Hai cặp biểu đồ trùng **từng ký tự** | "Tuổi tồn theo màu" (Tổng quan) ≡ "Tuổi theo màu" (Theo kho); "Tồn theo tuổi trong từng kho" ≡ "Tuổi tồn x trạng thái" |
+| Nặng | Cả màn hình "Theo kho" không mang thông tin | Chỉ một kho có tồn; thẻ kho lặp đúng số của Tổng quan |
+| Nhẹ, chấp nhận được | Cùng số hai hình vẽ | `ageDistribution()` ở Tổng quan và Tuổi tồn; top sản phẩm 5 vs 8 |
+
+### Đã sửa gì
+
+1. **Bỏ "Gợi ý theo tuổi tồn"** khỏi trang Tuổi tồn — hết mâu thuẫn số.
+2. **Màn hình "Theo kho" TỰ ẨN** khi chỉ còn một kho có tồn, kèm ô lọc Kho.
+   Không xoá mã: có kho thứ hai là tự hiện lại. Xem `nhieuKho()` và `trangDuocXem()`.
+3. **"Tuổi tồn theo màu" chuyển** từ Tổng quan sang Theo sản phẩm.
+4. **"Cơ cấu tuổi tồn" ở Tổng quan thay bằng "So với hôm qua"** (xem dưới).
+5. Viết lại `warehousePage()` cho **thật sự chia theo kho** — Kho × Tuổi tồn và
+   Kho × Trạng thái — để nếu màn hình hiện lại thì nó không còn là bản sao.
+
+### "So với hôm qua" — dùng dữ liệu đã có sẵn mà chưa ai dùng
+
+Bảng `snapshots` ghi số tổng hợp mỗi ngày từ lâu, nhưng trước 28/08 chỉ màn hình
+Nhật ký đọc tới. `loadFromSupabase()` giờ lấy **hai** ngày gần nhất thay vì một.
+
+**Luật phải giữ:** số trong `snapshots` là số **toàn kho, không qua bộ lọc**.
+Vì vậy mũi tên chênh lệch trên thẻ số **chỉ hiện khi không lọc gì** (`khongLoc()`).
+Bỏ điều kiện đó đi là so một số đã lọc với một số chưa lọc — ra kết quả vô nghĩa
+mà nhìn vẫn có vẻ đúng.
+
+Mũi tên để **màu trung tính có chủ ý**: tồn tăng không hẳn tốt, tồn giảm không
+hẳn xấu. Tô xanh/đỏ ở đây là áp một phán xét mà dữ liệu không có.
+
+Việc này **không thay** trang "Biến động kỳ" đang chờ giữa tháng 9 — cái đó so
+kỳ dài, cái này so đúng một ngày.
+
+---
+
+## 10. Đã bỏ — đừng dựng lại nếu không có lý do mới
 
 **Màn hình "Phương án xử lý"** (`actions`) — bỏ 28/08/2026 theo yêu cầu anh Louis.
 
@@ -326,7 +371,7 @@ cột. Để lại thì vô hại nhưng là rác, và sẽ tự sống lại n�
 
 ---
 
-## 10. Còn treo
+## 11. Còn treo
 
 **Câu hỏi nghiệp vụ — quan trọng hơn mọi tính năng:**
 

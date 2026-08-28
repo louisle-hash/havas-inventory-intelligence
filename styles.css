@@ -865,3 +865,22 @@ span.log-run { background: var(--warning-light); color: var(--warning); }
 @media (max-width: 860px) {
   .khach-tt-row { grid-template-columns: minmax(0, 84px) minmax(0, 1fr) 54px; }
 }
+
+/* ==========================================================================
+   SO SÁNH VỚI NGÀY TRƯỚC (trang Tổng quan)
+   Mũi tên để trung tính có chủ ý: tồn tăng không hẳn là tốt, tồn giảm không
+   hẳn là xấu. Tô màu tốt/xấu ở đây là áp một phán xét mà dữ liệu không có.
+   ========================================================================== */
+
+.delta-chip { display: inline-flex; align-items: center; gap: 3px; margin-right: 7px; padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; background: #f4f5f6; color: var(--text); font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.delta-chip.is-flat { color: var(--muted); }
+.kpi-note .delta-chip { margin-bottom: 2px; }
+
+.so-ngay { width: 100%; }
+.so-ngay td, .so-ngay th { white-space: nowrap; }
+.so-ngay tbody strong { color: var(--ink); }
+.so-ngay-nhac { margin: 12px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+
+/* Cột phụ xếp dọc — dùng chung cho trang Tổng quan và Theo sản phẩm */
+.side-stack { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.side-stack > .panel { min-width: 0; }
