@@ -351,7 +351,56 @@ kỳ dài, cái này so đúng một ngày.
 
 ---
 
-## 10. Đã bỏ — đừng dựng lại nếu không có lý do mới
+## 10. Sắp xếp bảng — sửa 28/08/2026
+
+Anh Louis báo cột tuổi tồn sắp xếp nhảy lộn xộn. Đúng, và nguyên nhân sâu hơn
+một cột.
+
+### Hai lỗi gốc
+
+**1. Dấu chấm thập phân bị xoá nhầm.** Hàm cũ bóc số bằng
+`value.replace(/\./g, "")` để xử lý dấu ngăn nghìn kiểu Việt (`1.949,0`).
+Nhưng `data-sort-value` là số MÁY sinh (`14.6`), nên **14,6 ngày biến thành 146**.
+Sắp giảm dần ra `56, 3, 33, 2, 24, 22…` — đúng như anh Louis thấy.
+
+**2. Kiểu cột đoán từ CHỮ trong tiêu đề.** Regex
+`/SỐ|M3|M³|NGÀY|TUỔI|TỒN|SL/` đoán sai hàng loạt:
+
+| Cột | Bị đoán là | Đúng ra là |
+|---|---|---|
+| Ngày nhập · Ngày giao · Ngày | số | ngày tháng → đang sắp theo ngày trong tháng |
+| Dung tích · Tỷ trọng · Hàng lỗi · Nằm lâu nhất · Δ block | chữ | số |
+| Chỉ số (cột nhãn) | số | chữ |
+
+### Đã sửa thế nào
+
+Bỏ hẳn việc đoán qua tên. Kiểu cột giờ suy ra từ **chính giá trị trong ô**:
+
+- `data-sort-value` là số máy → đọc thẳng bằng `Number()`, không đụng vào dấu chấm.
+- Không có thì mới bóc từ chữ hiển thị, và **chỉ bỏ dấu chấm nào đứng trước đúng
+  ba chữ số** — nên `1.949,0` ra 1949 còn `14.6` giữ nguyên 14,6.
+- Cột được coi là số khi ≥60% ô có giá trị số. `"không đổi"` quy về 0.
+
+**Chuỗi `"324.683"` cố tình xử lý hai kiểu khác nhau** tuỳ đường vào: là
+`data-sort-value` thì hiểu 324,683; là chữ hiển thị thì hiểu 324.683 kiểu Việt.
+Không mâu thuẫn — hai nguồn có hai quy ước, và mã đi đúng đường của từng nguồn.
+
+### Hai lỗi khác tìm được nhân thể
+
+- **Nhật ký đồng bộ có dòng thông báo lỗi dùng `colspan` nằm dưới dòng lượt
+  chạy.** Sắp xếp tách nó khỏi dòng cha → thông báo bị gán nhầm cho lượt khác.
+  Giờ dòng phụ luôn đi theo dòng chính.
+- **Bảng "So với hôm qua" không cho sắp xếp nữa** (`data-no-sort`). Mỗi dòng một
+  đơn vị khác nhau — so m³ với số ngày với phần trăm là vô nghĩa.
+
+### Đã nghiệm thu
+
+Bấm thử **69 cột trên mọi bảng, cả hai chiều — 138 lượt**: không cột số nào sai
+thứ tự, không bảng nào mất dòng phụ. Bộ kiểm thử có thêm 22 mục cho riêng phần này.
+
+---
+
+## 11. Đã bỏ — đừng dựng lại nếu không có lý do mới
 
 **Màn hình "Phương án xử lý"** (`actions`) — bỏ 28/08/2026 theo yêu cầu anh Louis.
 
@@ -371,7 +420,7 @@ cột. Để lại thì vô hại nhưng là rác, và sẽ tự sống lại n�
 
 ---
 
-## 11. Còn treo
+## 12. Còn treo
 
 **Câu hỏi nghiệp vụ — quan trọng hơn mọi tính năng:**
 

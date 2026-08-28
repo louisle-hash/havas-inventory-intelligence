@@ -204,3 +204,26 @@ tự do, và chỉ quy được **52,9%** khối lượng kho về một khách.
   Đó là loại lỗi không ai phát hiện.
 - **Mũi tên tăng giảm nên để trung tính khi dữ liệu không nói tốt xấu.** Tồn kho
   tăng không hẳn tốt. Tô xanh/đỏ là áp phán xét mà số liệu không có.
+
+---
+
+## 28/08/2026 — Sắp xếp bảng nhảy lộn xộn
+
+**Rule rút ra:**
+
+- **Đừng dùng chung một hàm bóc số cho cả số MÁY lẫn chữ NGƯỜI ĐỌC.** Số máy là
+  `14.6`, chữ hiển thị là `1.949,0 m³` — hai quy ước ngược nhau về dấu chấm. Một
+  hàm phục vụ cả hai thì kiểu gì cũng sai một bên. Đây chính là lỗi làm 14,6
+  ngày thành 146.
+- **Đừng đoán kiểu dữ liệu từ TÊN cột.** "Ngày nhập" chứa chữ "ngày" nên bị coi
+  là số; "Dung tích" không chứa từ khoá nào nên bị coi là chữ. Suy từ **giá trị
+  thật trong ô** thì không bao giờ sai theo cách đó.
+- **Bỏ dấu ngăn nghìn phải có điều kiện:** chỉ bỏ dấu chấm đứng trước đúng ba
+  chữ số. `replace(/\./g, "")` là bỏ tất, kể cả dấu thập phân.
+- **Bảng có dòng phụ `colspan` thì sắp xếp phải kéo nó đi theo.** Nếu không,
+  thông báo lỗi của lượt chạy này bị gán sang lượt chạy khác — sai dữ liệu chứ
+  không chỉ xấu giao diện.
+- **Có bảng không nên cho sắp xếp.** Bảng mỗi dòng một đơn vị (m³, ngày, %) thì
+  sắp xếp chỉ tạo ra thứ tự vô nghĩa trông như có nghĩa.
+- **Kiểm bằng cách bấm thật mọi cột, cả hai chiều.** 138 lượt bấm chạy trong
+  vài giây và bắt được hai lỗi mà đọc mã không thấy.

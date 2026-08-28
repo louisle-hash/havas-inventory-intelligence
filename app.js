@@ -230,28 +230,79 @@ function filtersScopeLabel() {
   return scope.length ? scope.join(" · ") : "Toàn bộ tồn kho";
 }
 
-function parseSortValue(text, type) {
-  const value = String(text || "").trim();
-  if (type === "number") {
-    const normalized = value.replace(/\./g, "").replace(",", ".").match(/-?[\d.]+/);
-    return normalized ? Number(normalized[0]) : 0;
+// ==========================================================================
+// SẮP XẾP BẢNG
+//
+// Bản cũ có hai lỗi, sửa 28/08/2026:
+//
+// 1. Nó bóc số bằng `value.replace(/\./g, "")` — bỏ MỌI dấu chấm để xử lý dấu
+//    ngăn nghìn kiểu Việt ("1.949,0"). Nhưng data-sort-value là số MÁY sinh
+//    ("14.6"), nên 14,6 ngày biến thành 146 và cột Tuổi tồn nhảy loạn.
+//    Giờ chỉ bỏ dấu chấm nào đứng trước đúng ba chữ số.
+//
+// 2. Nó đoán kiểu cột từ CHỮ trong tiêu đề. "Ngày nhập" chứa "NGÀY" nên bị coi
+//    là số và sắp theo ngày trong tháng; "Dung tích", "Tỷ trọng", "Hàng lỗi"
+//    không khớp từ khoá nào nên bị sắp như chữ. Giờ kiểu cột được suy ra từ
+//    CHÍNH GIÁ TRỊ trong ô, không đoán qua tên nữa.
+// ==========================================================================
+
+// Chuỗi trông như một con số đơn thuần, cho phép kèm đơn vị quen thuộc.
+const CHU_LA_SO = /^[+-]?\d[\d.,]*\s*(m³|m3|ngày|block|dòng|lượt|giây|phút|s|%)?$/i;
+const CHU_LA_NGAY = /^\d{1,2}\/\d{1,2}\/\d{4}/;
+
+// "1.949,0 m³" -> 1949   "14,6 ngày" -> 14.6   "615" -> 615
+function soTuChuViet(chu) {
+  const t = String(chu || "").trim();
+  if (!t) return null;
+  // Chỉ bỏ dấu chấm ngăn nghìn (đứng trước đúng 3 chữ số), giữ dấu chấm thập phân.
+  const m = t.replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".").match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+function mocThoiGian(chu) {
+  const t = String(chu || "").trim();
+  const vn = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (vn) return Date.UTC(+vn[3], +vn[2] - 1, +vn[1]);
+  const iso = Date.parse(t);
+  return Number.isNaN(iso) ? null : iso;
+}
+
+// data-sort-value luôn do máy sinh (14.6, "2026-08-28") nên đọc thẳng.
+// Không có thì mới bóc từ chữ đang hiển thị.
+function giaTriSapXep(cell) {
+  if (!cell) return { so: null, chu: "", coKhoa: false };
+  const khoa = cell.dataset.sortValue;
+  if (khoa != null && khoa !== "") {
+    const n = Number(khoa);
+    if (Number.isFinite(n)) return { so: n, chu: khoa, coKhoa: true };
+    return { so: mocThoiGian(khoa), chu: khoa, coKhoa: true };
   }
-  if (type === "date") {
-    const parsed = Date.parse(value.split("/").reverse().join("-"));
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  return value;
+  const chu = (cell.textContent || "").trim();
+  // "không đổi" là chữ mà lech() sinh ra cho chênh lệch bằng 0 — nếu không quy
+  // về 0 thì cả cột Δ bị coi là cột chữ và sắp xếp thành vô nghĩa.
+  if (/^không đổi$/i.test(chu)) return { so: 0, chu, coKhoa: false };
+  if (CHU_LA_NGAY.test(chu)) return { so: mocThoiGian(chu), chu, coKhoa: false };
+  return { so: CHU_LA_SO.test(chu) ? soTuChuViet(chu) : null, chu, coKhoa: false };
+}
+
+// Cột được coi là số khi đa số ô có giá trị số. Ô không ra số (ví dụ "không đổi"
+// ở cột Δ, hay ô để trống) nhận 0 — đúng nghĩa với cột chênh lệch.
+function cotLaSo(giaTri) {
+  const coChu = giaTri.filter(v => v.chu);
+  if (!coChu.length) return false;
+  return coChu.filter(v => v.so != null).length >= coChu.length * 0.6;
 }
 
 function enhanceSortableTables(root) {
   root.querySelectorAll("table").forEach(table => {
+    // Bảng nào so các chỉ số KHÁC ĐƠN VỊ theo từng dòng thì sắp xếp là vô nghĩa
+    // (so m³ với số ngày với phần trăm). Đánh dấu data-no-sort để bỏ qua.
+    if (table.dataset.noSort != null) return;
     if (table.dataset.sortReady) return;
     table.dataset.sortReady = "true";
     [...table.querySelectorAll("thead th")].forEach((header, index, headers) => {
       const label = header.textContent.trim();
       if (!label) return;
-      const upper = label.toUpperCase();
-      const type = /SỐ|M3|M³|NGÀY|TUỔI|TỒN|SL/.test(upper) ? "number" : /NHẬP|XUẤT/.test(upper) ? "date" : "text";
       header.innerHTML = `<button class="sort-button" type="button"><span>${label}</span><svg aria-hidden="true" viewBox="0 0 16 16"><path d="M5 3v10m0-10L2.5 5.5M5 3l2.5 2.5M11 13V3m0 10-2.5-2.5M11 13l2.5-2.5"/></svg></button>`;
       header.querySelector("button").addEventListener("click", () => {
         const direction = header.dataset.sortDirection === "asc" ? "desc" : "asc";
@@ -262,16 +313,32 @@ function enhanceSortableTables(root) {
         header.dataset.sortDirection = direction;
         header.querySelector(".sort-button").classList.add(direction === "asc" ? "sorted-asc" : "sorted-desc");
         const body = table.tBodies[0];
-        const rows = [...body.rows].map((row, originalIndex) => ({ row, originalIndex }));
+        // Vài bảng có dòng phụ đi kèm dòng chính (nhật ký đồng bộ: dòng thông
+        // báo lỗi dùng colspan nằm ngay dưới dòng của lượt chạy). Chỉ sắp xếp
+        // dòng chính và kéo dòng phụ đi theo, nếu không thông báo lỗi sẽ bị
+        // tách khỏi lượt chạy sinh ra nó và gán nhầm cho lượt khác.
+        const soCot = table.querySelectorAll("thead th").length;
+        const rows = [];
+        for (const row of [...body.rows]) {
+          const laDongChinh = row.cells.length >= soCot;
+          if (laDongChinh || !rows.length) {
+            rows.push({ row, phu: [], originalIndex: rows.length, gt: giaTriSapXep(row.cells[index]) });
+          } else {
+            rows[rows.length - 1].phu.push(row);
+          }
+        }
+        const laSo = cotLaSo(rows.map(r => r.gt));
         rows.sort((a, b) => {
-          const av = parseSortValue(a.row.cells[index]?.dataset.sortValue || a.row.cells[index]?.textContent || "", type);
-          const bv = parseSortValue(b.row.cells[index]?.dataset.sortValue || b.row.cells[index]?.textContent || "", type);
-          const result = type === "text"
-            ? String(av).localeCompare(String(bv), "vi", { numeric: true, sensitivity: "base" })
-            : av - bv;
+          const result = laSo
+            ? (a.gt.so ?? 0) - (b.gt.so ?? 0)
+            : String(a.gt.chu).localeCompare(String(b.gt.chu), "vi", { numeric: true, sensitivity: "base" });
+          // Bằng nhau thì giữ nguyên thứ tự cũ, để bấm sắp xếp không xáo trộn vô cớ.
           return result ? result * (direction === "asc" ? 1 : -1) : a.originalIndex - b.originalIndex;
         });
-        rows.forEach(item => body.appendChild(item.row));
+        rows.forEach(item => {
+          body.appendChild(item.row);
+          item.phu.forEach(x => body.appendChild(x));
+        });
       });
     });
   });
@@ -737,7 +804,7 @@ function soVoiHomQua() {
       <span>Chưa so được với ngày trước. Từ lượt đồng bộ ngày mai, khối này sẽ tự có số.</span></div>`;
   }
   const ngay = d => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(`${d}T00:00:00`));
-  return `<div class="table-wrap"><table class="so-ngay"><thead><tr>
+  return `<div class="table-wrap"><table class="so-ngay" data-no-sort><thead><tr>
       <th>Chỉ số</th><th>${ngay(qua.report_date)}</th><th>${ngay(nay.report_date)}</th><th>Thay đổi</th>
     </tr></thead><tbody>
     ${CHI_SO_SO_NGAY.map(([nhan, truong, dd]) => `<tr>

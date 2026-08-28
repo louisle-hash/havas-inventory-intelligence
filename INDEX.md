@@ -64,5 +64,5 @@ Mô tả đầy đủ nằm ngay trong app: mở màn hình **"Cách app hoạt 
 4. ~~Chạy `scripts/phan-quyen-supabase.sql` trên Supabase~~ — xong 27/08/2026, đã nghiệm
    thu RLS, bảng kết quả ở `knowledge/BAN-GIAO.md` mục 7
 5. Cấp thêm màn hình quản trị cho ai cần — làm ngay trong app, màn hình **Cấu hình tài khoản**
-6. Xác nhận `SST` là khách hàng hay mã nội bộ (xem `knowledge/BAN-GIAO.md` mục 11)
+6. Xác nhận `SST` là khách hàng hay mã nội bộ (xem `knowledge/BAN-GIAO.md` mục 12)
 7. Đề nghị kho chốt danh mục khách hàng trong ERP — 21% tồn đang không ghi mã đơn
