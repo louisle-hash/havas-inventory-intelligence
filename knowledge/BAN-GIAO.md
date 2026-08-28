@@ -62,6 +62,11 @@ giữ nguyên tắc này.
 | 44% block **không có mã vị trí kho** | chặn mọi tính năng "đi lấy hàng" |
 | `Remark` = mã đơn/lệnh SX, **không phải** trạng thái phụ | `SST-179--Mousse tấm`, `WB2604-0029` |
 | `Remark1` = tình trạng lỗi, nhập tự do | 14 loại lỗi hiển thị thành 15 vì khác cách gõ |
+| **ERP KHÔNG có cột khách hàng** | Kiểm cả 44 cột stored procedure trả về; các cột `sync.py` bỏ đều là cột cấu trúc hoặc trùng |
+| Tên khách nằm lẫn trong `Remark`, dạng `KHÁCH-MÃ ĐƠN-mô tả` | `QUỐC PHONG-QP-2607-01` · `ĐH-JANGIN` · `ASHT-883.R0--Mousse tấm` |
+| Chỉ **52,9%** m³ quy được về khách hàng | Đo trên tồn 28/08/2026: 1.036/1.957 m³ |
+| **21,0%** m³ có ô mã đơn để TRỐNG | 410 m³ · 126 block — không quy được về ai |
+| `movements` KHÔNG có mã đơn | Nên không phân tích được nhập–xuất theo khách, chỉ phân tích được tồn hiện tại |
 
 ---
 
@@ -78,6 +83,7 @@ giữ nguyên tắc này.
 | **hau.le@havas.vn** là quản trị viên đầu tiên | Claude đặt mặc định 27/08 | Phải có ít nhất một admin, nếu không màn hình Cấu hình không ai mở được. Đổi được trong app |
 | Ba tài khoản còn lại mặc định **member**, chưa cấp 3 màn hình quản trị | Claude đặt mặc định 27/08 | Đúng ý "có user không được xem màn hình quản trị". Quản trị viên tự cấp thêm |
 | Việc giao: **mọi member sửa được mọi việc**, chỉ người tạo và admin xoá được | Claude đề xuất 27/08 | Họp thì ai cập nhật cũng được; nhưng xoá là mất dấu nên siết hơn |
+| **Phương án B** cho màn hình Theo khách hàng: gộp tên khách theo luật, nhưng công khai luật + cho xem nguyên văn | Louis, 28/08 | Giữ nguyên văn thì ra 59 nhóm lẫn lộn, không dùng được. Gộp mà giấu thì phá nguyên tắc trung thực. B là đường giữa |
 | **KHÔNG viết lại lịch sử git** để xoá dữ liệu cũ đã từng lọt vào repo | Louis, 27/08 | Chỉ quan tâm dữ liệu đang kéo từ SQL về. Số liệu kho của tháng 7 không còn giá trị. **Claude đã nêu một lần kèm ba phương án — không nhắc lại nữa** |
 
 ---
@@ -245,7 +251,61 @@ rồi mới chạy câu SELECT thì kế hoạch mới được lập với đú
 
 ---
 
-## 8. Còn treo
+## 8. Phân tích theo khách hàng — thêm 28/08/2026
+
+Màn hình **Theo khách hàng** là màn hình DUY NHẤT trong app là **diễn giải**,
+không phải số gốc. Mọi màn hình khác đọc thẳng cột từ ERP; màn hình này phải
+tự tách tên khách ra khỏi một ô ghi chú tự do.
+
+### Vì sao phải diễn giải
+
+ERP không có cột khách hàng — đã kiểm cả 44 cột. Tên khách nằm trong ô `Remark`
+(map thành `statusSecondary`), lẫn với bốn thứ khác. Đo trên tồn 28/08/2026,
+tổng 1.957,3 m³:
+
+| Nhóm | m³ | % | Block |
+|---|---:|---:|---:|
+| **Quy được về khách hàng** | 1.036,3 | **52,9** | 326 |
+| Ô mã đơn để trống | 410,3 | 21,0 | 126 |
+| Lệnh sản xuất nội bộ `WO`/`IN` | 393,9 | 20,1 | 124 |
+| Nhóm nội bộ (thí nghiệm, dự trù, QA, TMĐT) | 78,0 | 4,0 | 27 |
+| Ghi chú **lỗi** gõ nhầm vào ô mã đơn | 38,8 | 2,0 | 14 |
+
+→ **27 khách hàng**, 5 khách lớn nhất chiếm 56% phần quy được.
+
+### Quyết định của anh Louis: phương án B
+
+Chọn ngày 28/08/2026 sau khi Claude nêu ba phương án. Gộp theo luật, **nhưng**:
+
+1. Màn hình hiện **thanh độ tin cậy ngay đầu trang** — người xem biết ngay mình
+   đang nhìn 52,9% của kho, không phải toàn bộ.
+2. Có bảng **"Luật gộp đang áp dụng"** công khai từng luật kèm khối lượng bị ảnh hưởng.
+3. Mỗi khách có nút **"Xem nguyên văn"** mở ra đúng các chuỗi gốc từ ERP.
+
+Ba điều đó giữ được tinh thần "app là gương trung thực của ERP" ở mục 4 — không
+giấu việc mình đang diễn giải, và luôn lần ngược về số gốc được.
+
+### Bốn cái bẫy trong dữ liệu, đã xử lý trong `phanLoaiDon()`
+
+| Bẫy | Hậu quả nếu bỏ qua | Cách xử lý |
+|---|---|---|
+| `ĐH-JANGIN`, `ĐH-HMT`, `ĐH-LV` | Ba khách bị gộp thành một khách tên "ĐH", và `PHÁT TRIỂN` bị tách đôi | Với tiền tố `ĐH-`, khách là token thứ **hai** |
+| `NỨT`, `RÁCH`, `LEM MÀU`, `ĐỔ DƯ` nằm trong ô mã đơn | Bốn "khách hàng" ma | Khớp tiền tố, xếp vào nhóm "ghi chú lỗi" |
+| `ĐỔ TN` (đổ thí nghiệm) vs `ĐỔ DƯ` (lỗi) | Giống nhau hai chữ đầu nhưng khác nhóm hẳn | Luật thí nghiệm khớp `ĐỔ TN` **trước** luật lỗi |
+| `SST-128-RL/ASHT-882.R0` — một ô hai khách | Đếm trùng hoặc hụt | Tính cho khách đứng trước, và **ghi rõ giới hạn này trên màn hình** |
+
+Tên chỉ một hai ký tự (`Q`, `T`) được đánh dấu **`?`** — luật đoán được nhưng
+chưa đủ chắc là khách hàng.
+
+### Ba việc màn hình này KHÔNG làm được
+
+1. **Không có tiền.** ERP không trả về giá. Xếp hạng chỉ theo m³ và số block.
+2. **Không có xu hướng theo khách.** Bảng `movements` không có mã đơn.
+3. **Chưa so kỳ được.** Cần `snapshots` đủ 2–4 tuần, khoảng giữa tháng 9.
+
+---
+
+## 9. Còn treo
 
 **Câu hỏi nghiệp vụ — quan trọng hơn mọi tính năng:**
 
@@ -267,3 +327,14 @@ rồi mới chạy câu SELECT thì kế hoạch mới được lập với đú
    trong `.env` và GitHub Secrets.
 7. **Tạo tài khoản mới vẫn phải vào Supabase Dashboard.** Làm được trong app thì
    cần một Edge Function giữ secret key. Chưa làm vì chỉ có 4 tài khoản.
+
+8. **Kho cần chốt danh mục khách hàng trong ERP.** Đây là cách chữa TẬN GỐC cho
+   màn hình Theo khách hàng, và không phải việc code. Hiện 21% tồn không ghi mã
+   đơn, 2% ghi nhầm tình trạng lỗi vào ô mã đơn, và tên khách nhập tự do nên
+   càng dùng lâu càng phân mảnh. Cùng loại vấn đề với danh mục lỗi `Remark1` ở
+   mục 5 — cùng một nguyên nhân: ô tự do trong ERP.
+
+9. **`SST` là khách hàng hay mã nội bộ?** Đang là nhóm lớn nhất (197 m³,
+   100 block, 12 mã đơn) và đang được xếp là khách hàng. Nếu thực ra là mã nội
+   bộ của Havas thì sửa một dòng: thêm `"SST"` vào `DON_NHOM_NOI_BO` trong
+   `app.js`. Đã hỏi anh Louis ngày 28/08, chưa có câu trả lời.

@@ -61,7 +61,7 @@ create table if not exists public.app_users (
   -- (tài liệu kỹ thuật), 'logs' (nhật ký) và 'admin' (cấu hình tài
   -- khoản) — đó là ba màn hình quản trị, quản trị viên cấp thêm khi cần.
   allowed_pages text[] not null default array[
-    'guide', 'overview', 'warehouse', 'product',
+    'guide', 'overview', 'warehouse', 'product', 'customer',
     'aging', 'status', 'actions', 'details', 'workflow'
   ],
   is_active     boolean not null default true,
@@ -368,7 +368,24 @@ create policy login_log_read on public.login_log
 
 
 -- =====================================================================
--- 8. KIỂM TRA SAU KHI CHẠY
+-- 8. BỔ SUNG MÀN HÌNH MỚI CHO CÁC TÀI KHOẢN ĐÃ CÓ
+--
+-- Đặt 'customer' vào default ở mục 1 chỉ có tác dụng với tài khoản TẠO SAU.
+-- Tài khoản đã tồn tại giữ nguyên mảng cũ, nên phải cấp thêm bằng tay.
+-- Mỗi lần thêm một màn hình nghiệp vụ mới vào app, thêm một khối như dưới đây
+-- rồi chạy lại file này — không cấp thì cả nhóm sẽ không thấy màn hình mới.
+--
+-- KHÔNG cấp cho những màn hình quản trị ('architecture', 'logs', 'admin'):
+-- quản trị viên tự xem được hết, người khác thì phải được cấp có chủ đích.
+-- =====================================================================
+
+update public.app_users
+   set allowed_pages = array_append(allowed_pages, 'customer')
+ where not ('customer' = any(allowed_pages));
+
+
+-- =====================================================================
+-- 9. KIỂM TRA SAU KHI CHẠY
 -- =====================================================================
 --
 -- Xem ai đang có vai trò gì:

@@ -128,3 +128,39 @@ Làm giai đoạn 5 của lộ trình: bảng `app_users` (ba vai trò + danh s�
   lưới chống tự khoá cửa có hoạt động không thì phải thử hạ đúng quản trị viên
   duy nhất. Dùng `begin; …; set constraints all immediate; rollback;` —
   trigger hoãn-lại bị ép chạy ngay, thấy được kết quả mà không commit gì.
+
+---
+
+## 28/08/2026 — Màn hình "Theo khách hàng"
+
+Yêu cầu: thêm màn hình phân tích theo khách hàng. Việc đầu tiên làm không phải
+là vẽ giao diện, mà là **đi tìm xem dữ liệu có chứa khách hàng không**.
+
+Câu trả lời: ERP **không có** cột khách hàng. Tên khách nằm lẫn trong ô ghi chú
+tự do, và chỉ quy được **52,9%** khối lượng kho về một khách.
+
+**Rule rút ra:**
+
+- **Trước khi thiết kế một màn hình, hãy đi hỏi dữ liệu, đừng hỏi trí tưởng
+  tượng.** Nếu bắt tay vẽ ngay theo yêu cầu, sẽ ra một màn hình đẹp dựa trên
+  một cột không tồn tại. Mười lăm phút đọc `sync.py` và đếm dữ liệu thật đã đổi
+  hoàn toàn nội dung buổi tư vấn.
+- **Đo độ phủ TRƯỚC khi hứa.** Con số 52,9% là thứ quyết định màn hình này nên
+  trông như thế nào — nó buộc phải có một thanh "độ tin cậy" ngay đầu trang thay
+  vì một dòng chú thích nhỏ ở góc.
+- **Khi buộc phải diễn giải dữ liệu, phải trả lại đường lần ngược.** App vốn có
+  nguyên tắc "là gương trung thực của ERP". Màn hình này phá lệ, nên phải bù
+  bằng ba thứ: công khai luật gộp, hiện tỷ lệ không quy được, và nút xem nguyên
+  văn từng chuỗi gốc. Diễn giải mà không cho kiểm chứng ngược thì thành bịa.
+- **Ô nhập tự do luôn chứa nhiều hơn một loại thông tin.** Ô "mã đơn" ở đây chứa
+  cả tên khách, lệnh sản xuất, tình trạng lỗi và nhóm nội bộ. Phân loại phải bắt
+  đầu bằng việc *liệt kê hết các loại*, không phải bằng việc viết regex.
+- **Cẩn thận hai chuỗi giống nhau ở vài ký tự đầu nhưng khác nhóm hẳn.**
+  `ĐỔ TN` là thí nghiệm, `ĐỔ DƯ` là ghi chú lỗi. Thứ tự luật quyết định đúng sai.
+- **Thêm màn hình mới thì phải cấp quyền cho màn hình đó.** Đặt vào `default` của
+  cột `allowed_pages` chỉ có tác dụng với tài khoản tạo SAU. Tài khoản đã có phải
+  `array_append` thêm, nếu không cả nhóm không thấy màn hình mới — chỉ quản trị
+  viên thấy, và sẽ tưởng là đã xong.
+- **Bài kiểm thử ghi cứng con số sẽ hỏng khi thêm tính năng.** "Xem được 9 màn
+  hình nghiệp vụ" hỏng ngay khi có màn hình thứ 10. Cho phép đo tự tính từ
+  `pageConfig` thay vì ghi số.

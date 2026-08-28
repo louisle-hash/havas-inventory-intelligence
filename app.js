@@ -49,6 +49,12 @@ const pageConfig = {
     description: "Theo dõi sản phẩm, màu và trạng thái để cùng thống nhất hướng xử lý cho từng nhóm mousse.",
     kicker: "Phân tích sản phẩm",
   },
+  customer: {
+    label: "Theo khách hàng",
+    title: "Nửa kho đang nằm đó cho ai",
+    description: "Tách tên khách từ ô mã đơn của ERP, xem ai đang giữ tồn, hàng của ai nằm lâu và sản xuất dư dồn cho ai.",
+    kicker: "Phân tích khách hàng",
+  },
   aging: {
     label: "Tuổi tồn",
     title: "Theo dõi tuổi tồn kho",
@@ -115,6 +121,7 @@ const icons = {
   overview: '<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
   warehouse: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 9l9-5 9 5v11H3zM3 9h18M8 20v-6h8v6"/></svg>',
   product: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg>',
+  customer: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20a6 6 0 0112 0"/><path d="M16.5 5.5a3 3 0 010 5.4M18.5 20a6.4 6.4 0 00-2.2-4.6"/></svg>',
   aging: '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   status: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h8"/><circle cx="18" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>',
   actions: '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4l8 4v8l-8 4-8-4V8z"/><path d="M9 12l2 2 4-4"/></svg>',
@@ -1360,6 +1367,7 @@ function renderPage() {
     overview: overviewPage,
     warehouse: warehousePage,
     product: productPage,
+    customer: customerPage,
     aging: agingPage,
     status: statusPage,
     actions: actionsPage,
@@ -1466,6 +1474,7 @@ function subsetByDrill(type, value) {
   if (type === "color") return state.filtered.filter(row => row.color === value);
   if (type === "age") return state.filtered.filter(row => row.ageBucket === value);
   if (type === "warehouse") return state.filtered.filter(row => row.warehouse === value);
+  if (type === "customer") return state.filtered.filter(row => phanLoaiDon(row.statusSecondary).ten === value);
   if (type === "remark") return state.filtered.filter(row => row.statusSecondary === value);
   if (type === "remark1") return state.filtered.filter(row => row.statusTertiary === value);
   if (type === "day" || type === "week" || type === "month") {
@@ -1601,6 +1610,299 @@ async function xoaViec(id) {
   state.tasks = state.tasks.filter(item => item.id !== id);
   renderPage();
   toast("Đã xoá nhiệm vụ");
+}
+
+// ==========================================================================
+// PHÂN TÍCH THEO KHÁCH HÀNG
+//
+// ĐỌC KỸ TRƯỚC KHI SỬA — màn hình này khác mọi màn hình còn lại ở một điểm:
+// nó là DIỄN GIẢI, không phải số gốc.
+//
+// ERP KHÔNG có cột khách hàng. Đã kiểm cả 44 cột stored procedure trả về.
+// Tên khách nằm lẫn trong ô ghi chú tự do `Remark` (map thành statusSecondary),
+// theo dạng "KHÁCH - MÃ ĐƠN - mô tả":
+//     QUỐC PHONG-QP-2607-01      HUỲNH LÊ-HL-1808-2
+//     ASHT-883.R0--Mousse tấm    ĐH-JANGIN
+//
+// Vì là ô tự do nên trong đó lẫn cả bốn thứ khác nhau, đo trên tồn 28/08/2026:
+//     53,0%  quy được về khách hàng      (1.054 m³)
+//     19,8%  lệnh sản xuất nội bộ WO/IN  (394 m³)
+//     20,6%  ô để trống                  (410 m³)
+//      4,4%  nhóm nội bộ: thí nghiệm, dự trù, QA, TMĐT
+//      2,3%  ghi chú LỖI bị gõ nhầm vào ô mã đơn — "NỨT", "RÁCH", "LEM MÀU"
+//
+// Anh Louis chọn phương án B ngày 28/08/2026: gộp theo luật, nhưng CÔNG KHAI
+// luật ngay trên màn hình và cho xem nguyên văn chuỗi gốc. Điều đó giữ được
+// tinh thần "app là gương trung thực của ERP" ở BAN-GIAO mục 4 — người dùng
+// luôn kiểm chứng ngược được.
+//
+// Cách chữa tận gốc KHÔNG nằm ở đây: kho cần chốt danh mục khách trong ERP.
+// Đã ghi vào phần "Còn treo" của BAN-GIAO.
+// ==========================================================================
+
+// Lệnh sản xuất nội bộ: WO2608, WOE2608, IN2608, INE2603…
+const DON_NOI_BO = /^(WO|WOE|IN|INE)\d/i;
+
+// Hàng thí nghiệm, gõ 6 kiểu khác nhau cho cùng một thứ:
+// "THÍ NGHIỆM", "THI NGHIEM" (không dấu), "TN", "TN RÊ", "TN 14/5/26", "ĐỔ TN".
+// Lưu ý "ĐỔ TN" (đổ thí nghiệm) khác hẳn "ĐỔ DƯ" (đổ dư, là ghi chú lỗi) —
+// hai chuỗi giống nhau ở hai chữ đầu nhưng thuộc hai nhóm khác nhau.
+const DON_THI_NGHIEM = /^(THÍ NGHIỆM|THI NGHIEM|ĐỔ TN|TN)\b/i;
+
+// Ghi chú tình trạng lỗi bị gõ nhầm sang ô mã đơn. Khớp theo tiền tố vì người
+// nhập hay viết thêm: "RÁCH SX TRẢ", "LEM MÀU K SD ĐC", "ĐỔ DƯ 4/3".
+const DON_LOI = ["NỨT", "RÁCH", "LEM MÀU", "ĐỔ DƯ", "MÀU VÀNG", "MÚT MÀU", "CÓ BỘT", "PHẾ PHẨM", "BOSUNGTEM"];
+
+// Nhóm nội bộ của Havas, không phải khách hàng.
+const DON_NHOM_NOI_BO = new Set(["DỰ TRÙ", "TMĐT", "QA", "HÀNG TKN"]);
+
+const KHACH_LOAI = {
+  khach:  { nhan: "Khách hàng",              mau: "#b22536" },
+  noibo:  { nhan: "Lệnh sản xuất nội bộ",    mau: "#34373c" },
+  khac:   { nhan: "Nhóm nội bộ khác",        mau: "#8a9097" },
+  loi:    { nhan: "Ghi chú lỗi gõ nhầm ô",   mau: "#a8660a" },
+  trong:  { nhan: "Ô mã đơn để trống",       mau: "#cfd3d7" },
+};
+
+// Trả về { ten, loai, chacChan }. chacChan = false nghĩa là luật đoán được
+// nhưng nên có người rà lại — hiện thành dấu "?" trên màn hình chứ không giấu.
+function phanLoaiDon(chuoi) {
+  const goc = (chuoi || "").trim();
+  if (!goc) return { ten: "(không ghi mã đơn)", loai: "trong", chacChan: true };
+
+  // Một ô có thể chứa hai đơn: "SST-158--Mousse tấm/SST-171--Mousse tấm".
+  // Một block chỉ thuộc về một nơi, nên lấy phần đầu và ghi nhận điều đó.
+  const dau = goc.split(/[-–/]/)[0].replace(/\s+/g, " ").trim().toUpperCase();
+
+  if (DON_NOI_BO.test(dau) || /^ĐƠN HÀNG WO/i.test(goc)) return { ten: dau, loai: "noibo", chacChan: true };
+  if (DON_THI_NGHIEM.test(dau)) return { ten: "THÍ NGHIỆM", loai: "khac", chacChan: true };
+  if (DON_LOI.some(tu => dau.startsWith(tu))) return { ten: dau, loai: "loi", chacChan: true };
+  if (DON_NHOM_NOI_BO.has(dau)) return { ten: dau, loai: "khac", chacChan: true };
+
+  // "ĐH-JANGIN" nghĩa là "đơn hàng của JANGIN" — khách nằm ở token thứ hai.
+  // Không xử lý riêng thì JANGIN, HMT, LV đều bị gộp nhầm thành một khách "ĐH",
+  // và PHÁT TRIỂN bị tách làm đôi (đứng một mình, và trong "ĐH-PHÁT TRIỂN").
+  if (dau === "ĐH") {
+    const phan = goc.split(/[-–]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+    const ten = (phan[1] || "ĐH").toUpperCase();
+    return { ten, loai: "khach", chacChan: ten.length > 2 };
+  }
+
+  // Tên một hoặc hai ký tự ("Q", "T") không đủ để khẳng định là khách hàng.
+  return { ten: dau, loai: "khach", chacChan: dau.length > 2 };
+}
+
+function gomTheoKhach(rows) {
+  const theoLoai = {};
+  for (const k of Object.keys(KHACH_LOAI)) theoLoai[k] = { volume: 0, units: 0, blocks: 0 };
+
+  const map = new Map();
+  for (const row of rows) {
+    const { ten, loai, chacChan } = phanLoaiDon(row.statusSecondary);
+    const o = theoLoai[loai];
+    o.volume += row.closeVolume || 0;
+    o.units += row.closeUnits || 0;
+    o.blocks += 1;
+    if (loai !== "khach") continue;
+
+    if (!map.has(ten)) map.set(ten, { ten, chacChan, rows: [], donGoc: new Set() });
+    const k = map.get(ten);
+    k.rows.push(row);
+    if (row.statusSecondary) k.donGoc.add(row.statusSecondary);
+  }
+
+  const khach = [...map.values()].map(k => {
+    const tuoi = k.rows.map(r => Number(r.daysInStock)).filter(v => Number.isFinite(v));
+    return {
+      ten: k.ten,
+      chacChan: k.chacChan,
+      rows: k.rows,
+      donGoc: [...k.donGoc].sort(),
+      volume: sum(k.rows, "closeVolume"),
+      units: sum(k.rows, "closeUnits"),
+      blocks: k.rows.length,
+      tuoiTB: tuoi.length ? tuoi.reduce((a, b) => a + b, 0) / tuoi.length : null,
+      tuoiMax: tuoi.length ? Math.max(...tuoi) : null,
+      soLoi: k.rows.filter(r => (r.statusTertiary || "").trim()).length,
+      khoDangGiu: unique(k.rows.map(r => r.warehouse)),
+    };
+  }).sort((a, b) => b.volume - a.volume);
+
+  return { khach, theoLoai, tongVolume: sum(rows, "closeVolume") };
+}
+
+// Thanh độ tin cậy — đặt NGAY ĐẦU trang, không giấu xuống dưới. Người đi ra
+// quyết định phải biết mình đang nhìn bao nhiêu phần trăm của kho.
+function bangDoTinCay({ theoLoai, tongVolume }) {
+  const muc = Object.entries(KHACH_LOAI)
+    .map(([key, meta]) => ({ key, ...meta, ...theoLoai[key] }))
+    .filter(m => m.volume > 0)
+    .sort((a, b) => b.volume - a.volume);
+  const tong = tongVolume || 1;
+  const quyDuoc = theoLoai.khach.volume;
+
+  return `<section class="panel trust-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Bao nhiêu phần của kho quy được về khách hàng</h2>
+        <p>ERP không có cột khách hàng — tên khách được tách từ ô ghi chú tự do. Đây là phần đọc được, và phần không đọc được.</p>
+      </div>
+      <span class="panel-metric">${formatNumber(quyDuoc / tong * 100, 1)}% quy được</span>
+    </div>
+    <div class="trust-bar">${muc.map(m => `<span class="trust-seg" style="width:${Math.max(m.volume / tong * 100, 0.8)}%;background:${m.mau}" title="${m.nhan}: ${formatNumber(m.volume, 1)} m³"></span>`).join("")}</div>
+    <div class="trust-legend">${muc.map(m => `<div class="trust-item">
+        <span class="legend-swatch" style="background:${m.mau}"></span>
+        <span class="trust-name">${m.nhan}</span>
+        <b>${formatNumber(m.volume, 1)} m³</b>
+        <em>${formatNumber(m.volume / tong * 100, 1)}% · ${m.blocks} block</em>
+      </div>`).join("")}</div>
+    <p class="trust-note">Mọi con số bên dưới chỉ tính trên <strong>${formatNumber(quyDuoc, 1)} m³ quy được về khách</strong>, không phải toàn bộ ${formatNumber(tong, 1)} m³ đang tồn.</p>
+  </section>`;
+}
+
+function bangKhachHang(khach, tongKhach) {
+  if (!khach.length) {
+    return '<div class="empty-state"><strong>Không có khách hàng nào trong phạm vi đang lọc</strong><span>Thử bỏ bớt bộ lọc ở thanh trên.</span></div>';
+  }
+  return `<div class="table-wrap"><table><thead><tr>
+      <th>Khách hàng</th><th>m3 tồn</th><th>Block</th><th>Tỷ trọng</th>
+      <th>Tuổi TB</th><th>Nằm lâu nhất</th><th>Cơ cấu trạng thái</th><th>Có ghi lỗi</th><th>Kho</th><th></th>
+    </tr></thead><tbody>
+    ${khach.map(k => {
+      const coCau = ["SX theo đơn hàng", "SX dư", "Chưa xác định"]
+        .map(s => ({ s, v: sum(k.rows.filter(r => r.status === s), "closeVolume") }))
+        .filter(x => x.v > 0);
+      const tuoiLop = k.tuoiMax >= 90 ? "due-overdue" : k.tuoiMax >= 60 ? "due-due-soon" : "due-on-track";
+      return `<tr class="interactive-row" data-drill-type="customer" data-drill-value="${escapeAttr(k.ten)}">
+        <td><div class="product-cell"><strong>${escapeHtml(k.ten)}${k.chacChan ? "" : ' <em class="khach-ngo" title="Tên quá ngắn để khẳng định là khách hàng — cần rà lại">?</em>'}</strong><span>${k.donGoc.length} mã đơn</span></div></td>
+        <td class="numeric" data-sort-value="${k.volume}">${formatNumber(k.volume, 1)} m³</td>
+        <td class="numeric" data-sort-value="${k.blocks}">${k.blocks}</td>
+        <td class="numeric" data-sort-value="${k.volume}">${formatNumber(k.volume / (tongKhach || 1) * 100, 1)}%</td>
+        <td class="numeric" data-sort-value="${k.tuoiTB ?? -1}">${k.tuoiTB == null ? "—" : `${formatNumber(k.tuoiTB, 0)} ngày`}</td>
+        <td class="numeric" data-sort-value="${k.tuoiMax ?? -1}">${k.tuoiMax == null ? "—" : `<span class="due-state ${tuoiLop}">${formatNumber(k.tuoiMax, 0)} ngày</span>`}</td>
+        <td><div class="mini-stack">${coCau.map(x => `<span style="width:${x.v / k.volume * 100}%;background:${statusColors[x.s]}" title="${x.s}: ${formatNumber(x.v, 1)} m³"></span>`).join("")}</div></td>
+        <td class="numeric" data-sort-value="${k.soLoi}">${k.soLoi ? `<span class="canh-bao-loi">${k.soLoi}</span>` : "—"}</td>
+        <td>${k.khoDangGiu.join(", ")}</td>
+        <td><button class="assign-task-button" type="button" data-xem-don="${escapeAttr(k.ten)}">Xem nguyên văn</button></td>
+      </tr>`;
+    }).join("")}
+  </tbody></table></div>`;
+}
+
+// Khách × Tuổi tồn — câu hỏi tiền: hàng của ai đang nằm lâu.
+function luoiKhachTuoi(khach) {
+  const dai = ["0–7 ngày", "8–30 ngày", "31–60 ngày", "61–90 ngày", "91–180 ngày", ">180 ngày"];
+  const top = khach.slice(0, 10);
+  if (!top.length) return '<div class="empty-state"><strong>Chưa có dữ liệu</strong><span>—</span></div>';
+  const oGiaTri = (k, d) => sum(k.rows.filter(r => r.ageBucket === d), "closeVolume");
+  const max = Math.max(...top.flatMap(k => dai.map(d => oGiaTri(k, d))), 1);
+  return `<div class="heatmap-wrap"><div class="khach-luoi" style="grid-template-columns:minmax(120px,1.4fr) repeat(${dai.length},minmax(64px,1fr))">
+    <div></div>${dai.map(d => `<div class="heatmap-head">${d}</div>`).join("")}
+    ${top.map(k => `<div class="heatmap-row-label" title="${escapeAttr(k.ten)}">${escapeHtml(k.ten)}</div>${dai.map(d => {
+      const v = oGiaTri(k, d);
+      return `<button class="heatmap-cell" ${v ? `data-drill-khach-tuoi="${escapeAttr(k.ten)}" data-drill-tuoi="${d}"` : "disabled"} style="--heat:${v ? 0.08 + v / max * 0.82 : 0}"><strong>${v ? formatNumber(v, 1) : "—"}</strong></button>`;
+    }).join("")}`).join("")}
+  </div></div><p class="luoi-chu-thich">Số trong ô là m³. Càng đậm càng nhiều. Bấm vào ô để xem đúng những block đó.</p>`;
+}
+
+// Khách × Trạng thái — sản xuất dư đang dồn cho ai.
+function cotTrangThaiKhach(khach) {
+  const top = khach.slice(0, 10);
+  if (!top.length) return '<div class="empty-state"><strong>Chưa có dữ liệu</strong><span>—</span></div>';
+  const thuTu = ["SX theo đơn hàng", "SX dư", "Chưa xác định"];
+  return `<div class="khach-trangthai">${top.map(k => {
+    const phan = thuTu.map(s => ({ s, v: sum(k.rows.filter(r => r.status === s), "closeVolume") })).filter(x => x.v > 0);
+    const du = phan.find(x => x.s === "SX dư");
+    return `<div class="khach-tt-row">
+      <span class="khach-tt-ten" title="${escapeAttr(k.ten)}">${escapeHtml(k.ten)}</span>
+      <span class="khach-tt-bar">${phan.map(x => `<i style="width:${x.v / k.volume * 100}%;background:${statusColors[x.s]}" title="${x.s}: ${formatNumber(x.v, 1)} m³"></i>`).join("")}</span>
+      <b class="${du && du.v / k.volume > 0.4 ? "khach-tt-canh-bao" : ""}">${du ? `${formatNumber(du.v / k.volume * 100, 0)}% dư` : "0% dư"}</b>
+    </div>`;
+  }).join("")}
+  <div class="legend-list">${thuTu.map(s => `<span class="legend-row"><span class="legend-swatch" style="background:${statusColors[s]}"></span><span class="legend-name">${s}</span></span>`).join("")}</div></div>`;
+}
+
+function luatGopDangApDung({ theoLoai }) {
+  const hang = [
+    ["Bắt đầu bằng <code>WO</code>, <code>WOE</code>, <code>IN</code>, <code>INE</code> + số", "Lệnh sản xuất nội bộ", theoLoai.noibo],
+    ["Bắt đầu bằng <code>THÍ NGHIỆM</code>, <code>THI NGHIEM</code>, <code>TN</code>", "Gộp làm một nhóm “Thí nghiệm”", theoLoai.khac],
+    ["Bắt đầu bằng " + DON_LOI.map(t => `<code>${t}</code>`).join(", "), "Ghi chú lỗi gõ nhầm ô — không tính là khách", theoLoai.loi],
+    ["<code>ĐH-TÊNKHÁCH</code>", "Khách là phần sau <code>ĐH-</code>, để không gộp nhầm mọi đơn thành một khách tên “ĐH”", null],
+    ["Ô để trống", "Không quy được về ai", theoLoai.trong],
+    ["Còn lại", "Lấy phần trước dấu gạch đầu tiên làm tên khách", theoLoai.khach],
+  ];
+  return `<div class="luat-gop">
+    <table><thead><tr><th>Chuỗi trong ô mã đơn</th><th>Luật áp dụng</th><th>Đang ảnh hưởng</th></tr></thead><tbody>
+      ${hang.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="numeric">${c ? `${formatNumber(c.volume, 1)} m³` : "—"}</td></tr>`).join("")}
+    </tbody></table>
+    <p class="luat-canh-bao"><strong>Hai giới hạn phải biết.</strong>
+      Một ô có thể chứa hai đơn của hai khách (ví dụ <code>SST-128-RL/ASHT-882.R0</code>) — block đó chỉ được tính cho khách đứng trước.
+      Tên chỉ một hai ký tự được đánh dấu <em class="khach-ngo">?</em> vì chưa đủ chắc là khách hàng.
+      Cách chữa tận gốc là kho chốt danh mục khách trong ERP, không phải sửa ở đây.</p>
+  </div>`;
+}
+
+// Mở đúng những chuỗi GỐC từ ERP đã được gộp thành một khách. Đây là lời hứa
+// khi chọn phương án B: mọi con số trên màn hình đều lần ngược về số gốc được.
+function xemNguyenVanDon(ten) {
+  const rows = state.filtered.filter(r => phanLoaiDon(r.statusSecondary).ten === ten);
+  const theoDon = Object.entries(groupRows(rows, r => r.statusSecondary || "(không ghi mã đơn)"))
+    .map(([don, items]) => ({ don, volume: sum(items, "closeVolume"), blocks: items.length }))
+    .sort((a, b) => b.volume - a.volume);
+
+  els.modalTitle.textContent = `Nguyên văn mã đơn · ${ten}`;
+  els.modalSubtitle.textContent = `${theoDon.length} chuỗi gốc từ ERP được gộp thành khách "${ten}"`;
+  els.modalBody.innerHTML = `
+    <p class="nguyen-van-nhac">Đây là chữ ERP trả về, chưa qua xử lý. Nếu thấy một chuỗi bị gộp sai chỗ, đó là dấu hiệu kho cần chốt lại danh mục khách trong ERP.</p>
+    <div class="table-wrap"><table><thead><tr><th>Chuỗi gốc trong ô mã đơn</th><th>m3</th><th>Block</th></tr></thead><tbody>
+      ${theoDon.map(d => `<tr><td class="nguyen-van">${escapeHtml(d.don)}</td>
+        <td class="numeric">${formatNumber(d.volume, 1)} m³</td>
+        <td class="numeric">${d.blocks}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  els.modal.hidden = false;
+  requestAnimationFrame(() => {
+    els.modal.classList.add("show");
+    document.body.classList.add("modal-open");
+  });
+}
+
+function customerPage(rows = state.filtered) {
+  const goi = gomTheoKhach(rows);
+  const { khach, theoLoai } = goi;
+  const tongKhach = theoLoai.khach.volume;
+  const top5 = khach.slice(0, 5).reduce((a, k) => a + k.volume, 0);
+  const namLau = khach.filter(k => k.tuoiMax != null && k.tuoiMax >= 60);
+  const coLoi = khach.filter(k => k.soLoi > 0).sort((a, b) => b.soLoi - a.soLoi);
+
+  return `
+    ${bangDoTinCay(goi)}
+
+    <section class="kpi-grid">
+      ${kpiCard("Khách đang có tồn", khach.length, `${formatNumber(tongKhach, 1)} m³ quy được về khách`, "customer", "brand")}
+      ${kpiCard("Mức tập trung", khach.length ? `${formatNumber(top5 / (tongKhach || 1) * 100, 0)}%` : "—", "Phần của 5 khách lớn nhất", "volume", "info")}
+      ${kpiCard("Khách có hàng nằm ≥ 60 ngày", namLau.length, namLau.length ? namLau.map(k => k.ten).slice(0, 3).join(" · ") : "Không có", "clock", namLau.length ? "warning" : "success")}
+      ${kpiCard("Khách có block ghi lỗi", coLoi.length, coLoi.length ? `${coLoi.reduce((a, k) => a + k.soLoi, 0)} block có ghi tình trạng lỗi` : "Không có block nào ghi lỗi", "actions", coLoi.length ? "warning" : "success")}
+    </section>
+
+    ${panel("Xếp hạng khách hàng", "Bấm một dòng để xem toàn bộ block của khách đó. Bấm tiêu đề cột để sắp xếp", bangKhachHang(khach, tongKhach), `${khach.length} khách`, "table-panel")}
+
+    <div class="dashboard-grid">
+      ${panel("Khách × Tuổi tồn", "Hàng của ai đang nằm lâu — đây là câu hỏi về tiền, không phải về kho", luoiKhachTuoi(khach), "10 khách lớn nhất")}
+      ${panel("Khách × Trạng thái", "Sản xuất dư đang dồn cho khách nào", cotTrangThaiKhach(khach), "10 khách lớn nhất")}
+    </div>
+
+    ${panel("Hàng có ghi lỗi, theo khách", "Lấy nguyên văn ô tình trạng lỗi của ERP, không gộp cách viết",
+      coLoi.length
+        ? `<div class="rank-chart">${coLoi.slice(0, 8).map((k, i) => `<button class="rank-row" data-drill-type="customer" data-drill-value="${escapeAttr(k.ten)}">
+            <span class="rank-number">${String(i + 1).padStart(2, "0")}</span>
+            <span class="rank-copy"><strong>${escapeHtml(k.ten)}</strong><span>${unique(k.rows.map(r => r.statusTertiary).filter(Boolean)).slice(0, 3).join(" · ") || "—"}</span></span>
+            <span class="rank-track"><i style="width:${Math.max(k.soLoi / coLoi[0].soLoi * 100, 4)}%;--rank-color:#a8660a"></i></span>
+            <b>${k.soLoi} block</b>
+          </button>`).join("")}</div>`
+        : '<div class="empty-state"><strong>Không có block nào ghi tình trạng lỗi</strong><span>Trong phạm vi đang lọc.</span></div>')}
+
+    ${panel("Luật gộp đang áp dụng", "Công khai để anh kiểm chứng được mọi con số ở trên", luatGopDangApDung(goi), "", "table-panel")}
+  `;
 }
 
 // ==========================================================================
@@ -2092,6 +2394,18 @@ function bindEvents() {
   // Nút xoá nhiệm vụ và nút lưu tài khoản: để riêng một listener, không lẫn vào
   // listener đào sâu dữ liệu bên trên.
   els.pageContent.addEventListener("click", event => {
+    const oLuoi = event.target.closest("[data-drill-khach-tuoi]");
+    if (oLuoi) {
+      const ten = oLuoi.dataset.drillKhachTuoi, dai = oLuoi.dataset.drillTuoi;
+      openAnalysis(state.filtered.filter(r => phanLoaiDon(r.statusSecondary).ten === ten && r.ageBucket === dai),
+        `${ten} · ${dai}`, "Phân tích trong modal");
+      return;
+    }
+    const nutDon = event.target.closest("[data-xem-don]");
+    if (nutDon) {
+      xemNguyenVanDon(nutDon.dataset.xemDon);
+      return;
+    }
     const nutXoa = event.target.closest("[data-delete-task]");
     if (nutXoa) {
       xoaViec(nutXoa.dataset.deleteTask);
